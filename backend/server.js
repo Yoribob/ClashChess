@@ -11,9 +11,21 @@ const PORT = process.env.PORT || 3000;
 const app = express();
 const httpServer = http.createServer(app);
 
+const corsOriginFn = (origin, callback) => {
+  if (
+    !origin ||
+    origin === "http:
+    origin.endsWith(".vercel.app")
+  ) {
+    callback(null, true);
+  } else {
+    callback(new Error("Not allowed by CORS"));
+  }
+};
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http:
+    origin: corsOriginFn,
     credentials: true,
   },
 });
@@ -22,11 +34,11 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: "http:
+    origin: corsOriginFn,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(express.json());
