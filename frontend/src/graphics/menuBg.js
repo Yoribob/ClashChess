@@ -11,8 +11,8 @@ let savedCameraState = null;
 
 const objLoader = new OBJLoader();
 const mtlLoader = new MTLLoader();
-mtlLoader.setPath("./assets/pieces/");
-objLoader.setPath("./assets/pieces/");
+mtlLoader.setPath("/assets/pieces/");
+objLoader.setPath("/assets/pieces/");
 
 export function InitMenuBg() {
   if (globalState.camera && !savedCameraState) {
@@ -135,7 +135,7 @@ export function InitMenuBg() {
               pieceGroup.userData.isMenuBg = true;
 
               globalState.scene.add(pieceGroup);
-              rows[i].push({ mesh: pieceGroup })
+              rows[i].push({ mesh: pieceGroup });
 
               const direction = i % 2 === 0 ? 1 : -1;
               const stepDistance = direction * 0.8;
@@ -161,18 +161,18 @@ export function InitMenuBg() {
             (error) => {
               console.error(
                 `Error loading OBJ for menu bg ${type}_${color}:`,
-                error
+                error,
               );
-            }
+            },
           );
         },
         undefined,
         (error) => {
           console.error(
             `Error loading MTL for menu bg ${type}_${color}:`,
-            error
+            error,
           );
-        }
+        },
       );
 
       count++;
@@ -188,7 +188,7 @@ export function InitMenuBg() {
   globalState.camera.updateProjectionMatrix();
 
   frontLight = new THREE.DirectionalLight(0xffffff, 2.5);
-  frontLight.userData.keepLight = true; 
+  frontLight.userData.keepLight = true;
   frontLight.userData.isMenuLight = true;
   frontLight.position.set(5, 2, 5);
   frontLight.target.position.set(0, 0, 0);
