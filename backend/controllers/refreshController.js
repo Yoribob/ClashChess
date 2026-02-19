@@ -6,6 +6,24 @@ const {
 const { getDb } = require("../config/db");
 const getClientIP = require("../utils/ip");
 
+const isProd = process.env.NODE_ENV === "production";
+
+const accessCookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? "None" : "Lax",
+  maxAge: 15 * 60 * 1000,
+  path: "/",
+};
+
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: isProd ? "None" : "Lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/",
+};
+
 async function refreshAccessToken(req, res) {
   try {
     const db = getDb();
@@ -39,21 +57,9 @@ async function refreshAccessToken(req, res) {
         { upsert: true }
       );
 
-    res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
-      maxAge: 15 * 60 * 1000,
-      path: "/",
-    });
+    res.cookie("accessToken", newAccessToken, accessCookieOptions);
 
-    res.cookie("refreshToken", newRefreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/",
-    });
+    res.cookie("refreshToken", newRefreshToken, refreshCookieOptions);
 
     res.json({ msg: "Tokens refreshed" });
   } catch (err) {
