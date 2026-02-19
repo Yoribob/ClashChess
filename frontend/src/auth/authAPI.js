@@ -1,4 +1,4 @@
-const API_BASE = "/api";
+const API_BASE = (import.meta.env.VITE_API_URL || "") + "/api";
 
 function safeParseJson(response) {
   const contentType = response.headers.get("content-type");
@@ -18,7 +18,9 @@ export async function checkAuth() {
     if (response.ok) {
       const data = await safeParseJson(response);
       if (!data) {
-        console.warn("Auth check: expected JSON but got non-JSON response. Is the backend running? Proxy configured?");
+        console.warn(
+          "Auth check: expected JSON but got non-JSON response. Is the backend running? Proxy configured?",
+        );
         return { success: false };
       }
       if (data.user) {
@@ -27,7 +29,7 @@ export async function checkAuth() {
           username: data.user.username,
           icon: data.user.avatar
             ? `http://localhost:3000${data.user.avatar}`
-            : "../assets/icon1_default.jpg",
+            : "/assets/icon1_default.jpg",
           theme: "classic",
           gamesPlayed: data.user.gamesPlayed || 0,
           wins: data.user.gamesWon || 0,
@@ -58,7 +60,6 @@ export async function checkAuth() {
     return { success: false };
   }
 }
-
 
 export async function login(username, password) {
   try {

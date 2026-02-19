@@ -4,8 +4,8 @@ import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import { globalState } from "../config/globalState.js";
 const objLoader = new OBJLoader();
 const mtlLoader = new MTLLoader();
-mtlLoader.setPath("./assets/pieces/");
-objLoader.setPath("./assets/pieces/");
+mtlLoader.setPath("/assets/pieces/");
+objLoader.setPath("/assets/pieces/");
 
 export const pieces = {};
 export const loadedMeshes = [];
@@ -99,35 +99,35 @@ export class Piece {
             console.log(
               `OBJ loading progress: ${
                 (progress.loaded / progress.total) * 100
-              }%`
+              }%`,
             );
           },
           (error) => {
             console.error(
               `Error loading OBJ for ${this.type}_${this.color}:`,
-              error
+              error,
             );
-          }
+          },
         );
       },
       (progress) => {
         console.log(
-          `MTL loading progress: ${(progress.loaded / progress.total) * 100}%`
+          `MTL loading progress: ${(progress.loaded / progress.total) * 100}%`,
         );
       },
       (error) => {
         console.error(
           `Error loading MTL for ${this.type}_${this.color}:`,
-          error
+          error,
         );
-      }
+      },
     );
   }
 
   move(newPosition, duration = 30) {
     if (!this.mesh) {
       console.warn(
-        `Cannot move piece: mesh is null for ${this.color}${this.type}`
+        `Cannot move piece: mesh is null for ${this.color}${this.type}`,
       );
       return;
     }
