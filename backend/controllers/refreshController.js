@@ -6,20 +6,18 @@ const {
 const { getDb } = require("../config/db");
 const getClientIP = require("../utils/ip");
 
-const isProd = process.env.NODE_ENV === "production";
-
 const accessCookieOptions = {
   httpOnly: true,
-  secure: isProd,
-  sameSite: isProd ? "None" : "Lax",
+  secure: true,
+  sameSite: "None",
   maxAge: 15 * 60 * 1000,
   path: "/",
 };
 
 const refreshCookieOptions = {
   httpOnly: true,
-  secure: isProd,
-  sameSite: isProd ? "None" : "Lax",
+  secure: true,
+  sameSite: "None",
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: "/",
 };
