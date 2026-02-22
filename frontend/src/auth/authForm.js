@@ -121,7 +121,8 @@ export function createAuthMenu(type = "login") {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const username = usernameInput.value.trim().toLowerCase();
+    const rawUsername = usernameInput.value.trim();
+    const username = isLogin ? rawUsername.toLowerCase() : rawUsername;
     const password = passwordInput.value;
     const email = emailInput?.value.trim();
     const passwordRepeat = passwordRepeatInput?.value;

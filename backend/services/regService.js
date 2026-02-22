@@ -3,7 +3,8 @@ const { hashPassword } = require("../utils/password");
 const { signAccessToken, signRefreshToken } = require("../utils/jwt");
 
 async function registerUser({ username, password, email, userAgent, ip }) {
-  username = username.toLowerCase();
+  const usernameOriginal = (username || "").trim();
+  username = usernameOriginal.toLowerCase();
   email = email ? email.toLowerCase().trim() : null;
 
   if (email) {
@@ -37,6 +38,7 @@ async function registerUser({ username, password, email, userAgent, ip }) {
   const hashed = await hashPassword(password);
   const result = await users.insertOne({
     username,
+    usernameOriginal,
     email,
     password: hashed,
     createdAt: new Date(),
