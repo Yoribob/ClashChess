@@ -171,7 +171,8 @@ export function createAuthMenu(type = "login") {
         localStorage.setItem(
           "userData",
           JSON.stringify({
-            username: username,
+            username,
+            usernameOriginal: rawUsername,
             icon: "/assets/icon1_default.jpg",
             theme: "classic",
             gamesPlayed: 0,

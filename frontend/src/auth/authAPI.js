@@ -28,6 +28,7 @@ export async function checkAuth() {
         const userData = {
           _id: data.user._id,
           username: data.user.username,
+          usernameOriginal: data.user.usernameOriginal ?? data.user.username,
           icon: data.user.avatar
             ? `${API_ORIGIN}${data.user.avatar}`
             : "/assets/icon1_default.jpg",

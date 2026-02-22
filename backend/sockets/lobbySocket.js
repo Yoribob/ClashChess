@@ -7,6 +7,7 @@ function serializePlayers(players) {
     userId: p.userId?.toString?.() || p.userId,
     _id: p.userId?.toString?.() || p.userId,
     username: p.username,
+    usernameOriginal: p.usernameOriginal ?? p.username ?? null,
     ready: p.ready ?? false,
     avatar: p.avatar || null,
   }));
