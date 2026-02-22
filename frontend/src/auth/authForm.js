@@ -161,7 +161,7 @@ export function createAuthMenu(type = "login") {
       if (isLogin) {
         result = await login(username, password);
       } else {
-        result = await register(username, password, email);
+        result = await register(username, password, email, rawUsername);
       }
 
       if (result.success) {

@@ -21,6 +21,7 @@ async function register(req, res) {
   try {
     const { accessToken, refreshToken } = await registerUser({
       username: req.body.username,
+      usernameOriginal: req.body.usernameOriginal,
       password: req.body.password,
       email: req.body.email,
       userAgent: req.headers["user-agent"],

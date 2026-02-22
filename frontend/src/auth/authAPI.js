@@ -89,7 +89,7 @@ export async function login(username, password) {
   }
 }
 
-export async function register(username, password, email) {
+export async function register(username, password, email, usernameOriginal = username) {
   try {
     const response = await fetch(`${API_BASE}/reg`, {
       method: "POST",
@@ -99,6 +99,7 @@ export async function register(username, password, email) {
       credentials: "include",
       body: JSON.stringify({
         username,
+        usernameOriginal,
         password,
         email,
       }),
