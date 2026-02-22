@@ -1,6 +1,6 @@
 node_modules
 .env
-uploads/*
-!uploads/avatars/
-uploads/avatars/*
-!uploads/avatars/default-avatar.png
+backend/uploads/
+!backend/uploads/avatars/
+backend/uploads/avatars/*
+!backend/uploads/avatars/default-avatar.png
