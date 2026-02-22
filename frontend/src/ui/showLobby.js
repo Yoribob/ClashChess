@@ -42,14 +42,13 @@ export function showLobbyUI(lobbyCode, data) {
     (data?.players?.[1]
       ? { ...data.players[1], userId: normalizeUserId(data.players[1]) }
       : null);
-  const hostName =
-    host?.username != null && host.username !== ""
-      ? String(host.username)
-      : "HOST";
-  const guestName =
-    guest?.username != null && guest.username !== ""
-      ? String(guest.username)
-      : "Waiting";
+  const displayName = (h) =>
+    (h?.usernameOriginal ?? h?.username) != null &&
+    (h?.usernameOriginal ?? h?.username) !== ""
+      ? String(h.usernameOriginal ?? h.username)
+      : null;
+  const hostName = displayName(host) ?? "HOST";
+  const guestName = displayName(guest) ?? "Waiting";
   const defaultHostAvatar = new URL("/assets/icon_default.jpg", import.meta.url)
     .href;
   const defaultGuestAvatar = new URL(

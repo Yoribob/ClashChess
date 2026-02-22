@@ -5,6 +5,7 @@ function serializePlayers(players) {
   return players.map((p) => ({
     userId: p.userId?.toString?.() || p.userId,
     username: p.username ?? null,
+    usernameOriginal: p.usernameOriginal ?? p.username ?? null,
     ready: p.ready ?? false,
     avatar: p.avatar ?? null,
   }));
