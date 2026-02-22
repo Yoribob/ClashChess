@@ -1,5 +1,6 @@
 import socket from "../socket/index.js";
 import { showMainMenu } from "./showMainMenu.js";
+import { API_ORIGIN } from "../config/api.js";
 
 let _currentLobbyCode = null;
 let _currentUserId = null;
@@ -18,8 +19,7 @@ function avatarUrl(avatar) {
   if (!avatar) return null;
   if (typeof avatar !== "string") return null;
   if (avatar.startsWith("http")) return avatar;
-  const base = typeof window !== "undefined" ? window.location.origin : "";
-  return avatar.startsWith("/") ? base + avatar : base + "/" + avatar;
+  return avatar.startsWith("/") ? API_ORIGIN + avatar : API_ORIGIN + "/" + avatar;
 }
 
 function normalizeUserId(p) {
