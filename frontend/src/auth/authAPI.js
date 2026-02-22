@@ -1,4 +1,4 @@
-const API_BASE = (import.meta.env.VITE_API_URL || "") + "/api";
+import { API_BASE, API_ORIGIN } from "../config/api.js";
 
 function safeParseJson(response) {
   const contentType = response.headers.get("content-type");
@@ -29,7 +29,7 @@ export async function checkAuth() {
           _id: data.user._id,
           username: data.user.username,
           icon: data.user.avatar
-            ? `${import.meta.env.VITE_API_URL || ""}${data.user.avatar}`
+            ? `${API_ORIGIN}${data.user.avatar}`
             : "/assets/icon1_default.jpg",
           theme: "classic",
           gamesPlayed: data.user.gamesPlayed || 0,
