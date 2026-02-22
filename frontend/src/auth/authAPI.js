@@ -10,6 +10,7 @@ function safeParseJson(response) {
 
 export async function checkAuth() {
   try {
+    console.log("API_BASE:", API_BASE);
     const response = await fetch(`${API_BASE}/user/me`, {
       method: "GET",
       credentials: "include",
