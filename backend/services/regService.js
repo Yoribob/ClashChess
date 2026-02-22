@@ -2,8 +2,10 @@ const { getDb } = require("../config/db");
 const { hashPassword } = require("../utils/password");
 const { signAccessToken, signRefreshToken } = require("../utils/jwt");
 
-async function registerUser({ username, password, email, userAgent, ip }) {
-  const usernameOriginal = (username || "").trim();
+async function registerUser({ username, usernameOriginal: bodyUsernameOriginal, password, email, userAgent, ip }) {
+  const usernameOriginal = (bodyUsernameOriginal != null && String(bodyUsernameOriginal).trim() !== ""
+    ? String(bodyUsernameOriginal).trim()
+    : (username || "").trim());
   username = usernameOriginal.toLowerCase();
   email = email ? email.toLowerCase().trim() : null;
 
