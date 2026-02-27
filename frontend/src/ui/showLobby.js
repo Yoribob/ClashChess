@@ -1,5 +1,6 @@
 import socket from "../socket/index.js";
 import { showMainMenu } from "./showMainMenu.js";
+import { API_ORIGIN } from "../config/api.js";
 
 let _currentLobbyCode = null;
 let _currentUserId = null;
@@ -18,14 +19,13 @@ function avatarUrl(avatar) {
   if (!avatar) return null;
   if (typeof avatar !== "string") return null;
   if (avatar.startsWith("http")) return avatar;
-  const base = typeof window !== "undefined" ? window.location.origin : "";
-  return avatar.startsWith("/") ? base + avatar : base + "/" + avatar;
+  return avatar.startsWith("/") ? API_ORIGIN + avatar : API_ORIGIN + "/" + avatar;
 }
 
 function normalizeUserId(p) {
   if (!p) return p;
   const id = p.userId ?? p._id;
-  return typeof id === "string" ? id : id?.toString?.() ?? id?.$oid ?? id;
+  return typeof id === "string" ? id : (id?.toString?.() ?? id?.$oid ?? id);
 }
 
 export function showLobbyUI(lobbyCode, data) {
@@ -42,21 +42,18 @@ export function showLobbyUI(lobbyCode, data) {
     (data?.players?.[1]
       ? { ...data.players[1], userId: normalizeUserId(data.players[1]) }
       : null);
-  const hostName =
-    host?.username != null && host.username !== ""
-      ? String(host.username)
-      : "HOST";
-  const guestName =
-    guest?.username != null && guest.username !== ""
-      ? String(guest.username)
-      : "Waiting";
-  const defaultHostAvatar = new URL(
-    "../../assets/icon_default.jpg",
-    import.meta.url
-  ).href;
+  const displayName = (h) =>
+    (h?.usernameOriginal ?? h?.username) != null &&
+    (h?.usernameOriginal ?? h?.username) !== ""
+      ? String(h.usernameOriginal ?? h.username)
+      : null;
+  const hostName = displayName(host) ?? "HOST";
+  const guestName = displayName(guest) ?? "Waiting...";
+  const defaultHostAvatar = new URL("/assets/icon_default.jpg", import.meta.url)
+    .href;
   const defaultGuestAvatar = new URL(
-    "../../assets/icon_default.jpg",
-    import.meta.url
+    "/assets/icon_default.jpg",
+    import.meta.url,
   ).href;
   const hostAvatar = avatarUrl(host?.avatar) || defaultHostAvatar;
   const guestAvatar = avatarUrl(guest?.avatar) || defaultGuestAvatar;
@@ -72,8 +69,8 @@ export function showLobbyUI(lobbyCode, data) {
     host && String(host.userId) === String(_currentUserId)
       ? host.ready
       : guest && String(guest.userId) === String(_currentUserId)
-      ? guest.ready
-      : false;
+        ? guest.ready
+        : false;
 
   const menu = document.querySelector(".menu");
   if (!menu) return;
@@ -99,8 +96,8 @@ export function showLobbyUI(lobbyCode, data) {
     <div class="lobby-body">
       <!-- HOST -->
       <a class="lobby-player-card lobby-player-host ${hostReady}" data-player="host" data-userid="${
-    host.userId || host._id || ""
-  }" data-ready="${host.ready ? "true" : "false"}">
+        host.userId || host._id || ""
+      }" data-ready="${host.ready ? "true" : "false"}">
         <div class="player-avatar">
           <img src="${hostAvatar}" alt="Host avatar">
         </div>
@@ -127,8 +124,8 @@ export function showLobbyUI(lobbyCode, data) {
 
       <!-- GUEST -->
       <a class="lobby-player-card lobby-player-guest ${guestReady}" data-player="guest" data-userid="${
-    guest?.userId || guest?._id || ""
-  }" data-ready="${guest && guest.ready ? "true" : "false"}">
+        guest?.userId || guest?._id || ""
+      }" data-ready="${guest && guest.ready ? "true" : "false"}">
         <div class="player-avatar">
           <img src="${guestAvatar}" alt="Guest avatar">
         </div>
@@ -201,11 +198,10 @@ export function showLobbyUI(lobbyCode, data) {
           displayEl.textContent = String(safeRemaining);
         }
         if (labelEl) {
-          if(safeRemaining > 0){
-            labelEl.textContent = "Both players ready"
-          } 
-          else{
-            labelEl.textContent = "Starting..."
+          if (safeRemaining > 0) {
+            labelEl.textContent = "Both players ready";
+          } else {
+            labelEl.textContent = "Starting...";
             alert("Game will be started (TBI)");
           }
         }
@@ -218,25 +214,27 @@ export function showLobbyUI(lobbyCode, data) {
   }
 
   if (readyBtn) {
-  let isReady = Boolean(currentUserReady);
+    let isReady = Boolean(currentUserReady);
 
-  readyBtn.classList.toggle("is-ready", isReady);
-  readyBtn.classList.add("no-anim");
-
-  readyBtn.addEventListener("click", () => {
-    if (!_currentLobbyCode || !_currentUserId) return;
-
-    isReady = !isReady;
     readyBtn.classList.toggle("is-ready", isReady);
-    readyBtn.querySelector(".label").textContent = isReady ? "NOT READY" : "READY";
+    readyBtn.classList.add("no-anim");
 
-    socket.emit("lobby:ready", {
-      lobbyId: _currentLobbyCode,
-      userId: _currentUserId,
-      ready: isReady,
+    readyBtn.addEventListener("click", () => {
+      if (!_currentLobbyCode || !_currentUserId) return;
+
+      isReady = !isReady;
+      readyBtn.classList.toggle("is-ready", isReady);
+      readyBtn.querySelector(".label").textContent = isReady
+        ? "NOT READY"
+        : "READY";
+
+      socket.emit("lobby:ready", {
+        lobbyId: _currentLobbyCode,
+        userId: _currentUserId,
+        ready: isReady,
+      });
     });
-  });
-}
+  }
 
   const closeBtn = menu.querySelector(".lobby-close-btn");
   if (closeBtn) {

@@ -19,7 +19,7 @@ async function getMe(req, res) {
         _id: user._id.toString(),
         id: user._id.toString(),
         username: user.username,
-        usernameOriginal: user.usernameOriginal,
+        usernameOriginal: user.usernameOriginal ?? user.username,
         email: user.email,
         avatar: user.avatar || null,
         gamesPlayed: user.gamesPlayed || 0,

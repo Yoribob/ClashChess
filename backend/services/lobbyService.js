@@ -16,6 +16,7 @@ async function createLobby(userId) {
     {
       userId: user._id,
       username: user.username,
+      usernameOriginal: user.usernameOriginal ?? user.username,
       avatar: user.avatar || null,
       ready: false,
     },
@@ -60,6 +61,7 @@ async function joinLobby(lobbyId, userId) {
         players: {
           userId: user._id,
           username: user.username,
+          usernameOriginal: user.usernameOriginal ?? user.username,
           avatar: user.avatar || null,
           ready: false,
         },

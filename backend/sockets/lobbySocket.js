@@ -4,9 +4,10 @@ const { ObjectId } = require("mongodb");
 function serializePlayers(players) {
   if (!players || !Array.isArray(players)) return [];
   return players.map((p) => ({
-    userId: p.userId?.toString?.() || p.userId,
-    _id: p.userId?.toString?.() || p.userId,
+    userId: p.userId?.toString() || p.userId,
+    _id: p.userId?.toString() || p.userId,
     username: p.username,
+    usernameOriginal: p.usernameOriginal ?? p.username ?? null,
     ready: p.ready ?? false,
     avatar: p.avatar || null,
   }));
@@ -18,30 +19,16 @@ function lobbySocket(io) {
 
   io.on("connection", (socket) => {
     console.log("User connected", socket.id);
-    console.log("Number of sockets connected:", io.sockets.sockets.size);
-
     socket.lobbiesJoined = new Set();
 
+    // --------------------- CREATE LOBBY ---------------------
     socket.on("lobby:create", async (data) => {
       try {
         const { lobbyId, userId } = data;
-
-        if (!lobbyId || !userId) {
-          socket.emit("lobby:error", {
-            message: "Missing lobbyId or userId",
-            event: "lobby:create",
-          });
-          return;
-        }
+        if (!lobbyId || !userId) throw new Error("Missing lobbyId or userId");
 
         const lobby = await lobbies.findOne({ LobbyId: lobbyId });
-        if (!lobby) {
-          socket.emit("lobby:error", {
-            message: "Lobby not found",
-            event: "lobby:create",
-          });
-          return;
-        }
+        if (!lobby) throw new Error("Lobby not found");
 
         await lobbies.updateOne(
           { LobbyId: lobbyId, "players.userId": new ObjectId(userId) },
@@ -52,11 +39,9 @@ function lobbySocket(io) {
         socket.lobbiesJoined.add(lobbyId);
 
         const updatedLobby = await lobbies.findOne({ LobbyId: lobbyId });
-        const usersList = serializePlayers(updatedLobby?.players || []);
-
         io.to(lobbyId).emit("lobby:update", {
           lobbyId,
-          users: usersList,
+          users: serializePlayers(updatedLobby.players),
           action: "created",
           userId,
         });
@@ -64,46 +49,23 @@ function lobbySocket(io) {
         console.log(`Lobby ${lobbyId} created by user ${userId}`);
       } catch (error) {
         console.error("Error in lobby:create:", error);
-        socket.emit("lobby:error", {
-          message: error.message || "Failed to create lobby",
-          event: "lobby:create",
-        });
+        socket.emit("lobby:error", { message: error.message, event: "lobby:create" });
       }
     });
 
+    // --------------------- JOIN LOBBY ---------------------
     socket.on("lobby:join", async (data) => {
       try {
         const { lobbyId, userId } = data;
-
-        if (!lobbyId || !userId) {
-          socket.emit("lobby:error", {
-            message: "Missing lobbyId or userId",
-            event: "lobby:join",
-          });
-          return;
-        }
+        if (!lobbyId || !userId) throw new Error("Missing lobbyId or userId");
 
         const lobbyIdNorm = String(lobbyId).trim().toUpperCase();
         const lobby = await lobbies.findOne({ LobbyId: lobbyIdNorm });
-        if (!lobby) {
-          socket.emit("lobby:error", {
-            message: "Lobby not found",
-            event: "lobby:join",
-          });
-          return;
-        }
+        if (!lobby) throw new Error("Lobby not found");
 
         const userIdStr = String(userId);
-        const userInLobby = lobby.players?.some(
-          (p) => p.userId.toString() === userIdStr
-        );
-        if (!userInLobby) {
-          socket.emit("lobby:error", {
-            message: "User not found in lobby",
-            event: "lobby:join",
-          });
-          return;
-        }
+        const userInLobby = lobby.players?.some((p) => p.userId.toString() === userIdStr);
+        if (!userInLobby) throw new Error("User not found in lobby");
 
         await lobbies.updateOne(
           { LobbyId: lobbyIdNorm, "players.userId": new ObjectId(userIdStr) },
@@ -114,11 +76,9 @@ function lobbySocket(io) {
         socket.lobbiesJoined.add(lobbyIdNorm);
 
         const updatedLobby = await lobbies.findOne({ LobbyId: lobbyIdNorm });
-        const usersList = serializePlayers(updatedLobby?.players || []);
-
         io.to(lobbyIdNorm).emit("lobby:update", {
           lobbyId: lobbyIdNorm,
-          users: usersList,
+          users: serializePlayers(updatedLobby.players),
           action: "joined",
           userId: userIdStr,
         });
@@ -126,33 +86,18 @@ function lobbySocket(io) {
         console.log(`User ${userIdStr} joined lobby ${lobbyIdNorm}`);
       } catch (error) {
         console.error("Error in lobby:join:", error);
-        socket.emit("lobby:error", {
-          message: error.message || "Failed to join lobby",
-          event: "lobby:join",
-        });
+        socket.emit("lobby:error", { message: error.message, event: "lobby:join" });
       }
     });
 
+    // --------------------- READY ---------------------
     socket.on("lobby:ready", async (data) => {
       try {
         const { lobbyId, userId, ready } = data;
-
-        if (!lobbyId || !userId || typeof ready !== "boolean") {
-          socket.emit("lobby:error", {
-            message: "Missing lobbyId, userId, or ready status",
-            event: "lobby:ready",
-          });
-          return;
-        }
+        if (!lobbyId || !userId || typeof ready !== "boolean") throw new Error("Invalid data");
 
         const lobby = await lobbies.findOne({ LobbyId: lobbyId });
-        if (!lobby) {
-          socket.emit("lobby:error", {
-            message: "Lobby not found",
-            event: "lobby:ready",
-          });
-          return;
-        }
+        if (!lobby) throw new Error("Lobby not found");
 
         await lobbies.updateOne(
           { LobbyId: lobbyId, "players.userId": new ObjectId(userId) },
@@ -160,133 +105,89 @@ function lobbySocket(io) {
         );
 
         const updatedLobby = await lobbies.findOne({ LobbyId: lobbyId });
-        const usersList = serializePlayers(updatedLobby?.players || []);
-
         io.to(lobbyId).emit("lobby:update", {
           lobbyId,
-          users: usersList,
+          users: serializePlayers(updatedLobby.players),
           action: "ready",
           userId,
           ready,
         });
 
-        console.log(
-          `User ${userId} ${ready ? "ready" : "not ready"} in lobby ${lobbyId}`
-        );
+        console.log(`User ${userId} is now ${ready ? "ready" : "not ready"} in lobby ${lobbyId}`);
       } catch (error) {
         console.error("Error in lobby:ready:", error);
-        socket.emit("lobby:error", {
-          message: error.message || "Failed to update ready status",
-          event: "lobby:ready",
-        });
+        socket.emit("lobby:error", { message: error.message, event: "lobby:ready" });
       }
     });
 
+    // --------------------- LEAVE ---------------------
     socket.on("lobby:leave", async (data) => {
       try {
         const { lobbyId, userId } = data;
-
-        if (!lobbyId) {
-          socket.emit("lobby:error", {
-            message: "Missing lobbyId",
-            event: "lobby:leave",
-          });
-          return;
-        }
+        if (!lobbyId) throw new Error("Missing lobbyId");
 
         const lobby = await lobbies.findOne({ LobbyId: lobbyId });
         if (!lobby || !lobby.players) return;
 
+        let updatedPlayers;
         if (userId) {
           const userIdObj = new ObjectId(userId);
-          const updatedPlayers = lobby.players.filter((p) => {
-            if (p.userId instanceof ObjectId) {
-              return !p.userId.equals(userIdObj);
-            }
+          updatedPlayers = lobby.players.filter(p => {
+            if (p.userId instanceof ObjectId) return !p.userId.equals(userIdObj);
             return p.userId?.toString() !== userId;
           });
-
-          await lobbies.updateOne(
-            { LobbyId: lobbyId },
-            { $set: { players: updatedPlayers } }
-          );
-
-          socket.leave(lobbyId);
-          socket.lobbiesJoined.delete(lobbyId);
-
-          io.to(lobbyId).emit("lobby:update", {
-            lobbyId,
-            users: serializePlayers(updatedPlayers),
-            action: "left",
-            userId,
-          });
-
-          console.log(`User ${userId} left lobby ${lobbyId}`);
         } else {
-          const updatedPlayers = lobby.players.map((player) => {
-            if (player.socketId === socket.id) {
-              const { socketId, ...playerWithoutSocket } = player;
-              return playerWithoutSocket;
-            }
-            return player;
-          });
+          updatedPlayers = lobby.players.filter(p => p.socketId !== socket.id);
+        }
 
-          await lobbies.updateOne(
-            { LobbyId: lobbyId },
-            { $set: { players: updatedPlayers } }
-          );
-
-          socket.leave(lobbyId);
-          socket.lobbiesJoined.delete(lobbyId);
-
+        if (updatedPlayers.length === 0) {
+          await lobbies.deleteOne({ LobbyId: lobbyId });
+          console.log(`Lobby ${lobbyId} deleted because it became empty`);
+        } else {
+          await lobbies.updateOne({ LobbyId: lobbyId }, { $set: { players: updatedPlayers } });
           io.to(lobbyId).emit("lobby:update", {
             lobbyId,
             users: serializePlayers(updatedPlayers),
             action: "left",
-            socketId: socket.id,
+            userId: userId || null,
+            socketId: userId ? null : socket.id,
           });
-
-          console.log(`Socket ${socket.id} left lobby ${lobbyId}`);
         }
+
+        socket.leave(lobbyId);
+        socket.lobbiesJoined.delete(lobbyId);
+        console.log(`User ${userId || socket.id} left lobby ${lobbyId}`);
       } catch (error) {
         console.error("Error in lobby:leave:", error);
-        socket.emit("lobby:error", {
-          message: error.message || "Failed to leave lobby",
-          event: "lobby:leave",
-        });
+        socket.emit("lobby:error", { message: error.message, event: "lobby:leave" });
       }
     });
 
+    // --------------------- DISCONNECT ---------------------
     socket.on("disconnect", async () => {
       console.log("User disconnected", socket.id);
-      console.log("Number of sockets connected:", io.sockets.sockets.size);
 
       try {
         for (const lobbyId of socket.lobbiesJoined) {
           const lobby = await lobbies.findOne({ LobbyId: lobbyId });
           if (!lobby || !lobby.players) continue;
 
-          const updatedPlayers = lobby.players.map((player) => {
-            if (player.socketId === socket.id) {
-              const { socketId, ...playerWithoutSocket } = player;
-              return playerWithoutSocket;
-            }
-            return player;
-          });
+          const updatedPlayers = lobby.players.filter(p => p.socketId !== socket.id);
 
-          await lobbies.updateOne(
-            { LobbyId: lobbyId },
-            { $set: { players: updatedPlayers } }
-          );
+          if (updatedPlayers.length === 0) {
+            await lobbies.deleteOne({ LobbyId: lobbyId });
+            console.log(`Lobby ${lobbyId} deleted on disconnect`);
+          } else {
+            await lobbies.updateOne({ LobbyId: lobbyId }, { $set: { players: updatedPlayers } });
+            io.to(lobbyId).emit("lobby:update", {
+              lobbyId,
+              users: serializePlayers(updatedPlayers),
+              action: "left",
+              socketId: socket.id,
+            });
+          }
 
-          io.to(lobbyId).emit("lobby:update", {
-            lobbyId,
-            users: serializePlayers(updatedPlayers),
-            action: "left",
-            socketId: socket.id,
-          });
-
-          console.log(`Socket ${socket.id} left lobby ${lobbyId}`);
+          socket.lobbiesJoined.delete(lobbyId);
         }
       } catch (error) {
         console.error("Error handling disconnect:", error);

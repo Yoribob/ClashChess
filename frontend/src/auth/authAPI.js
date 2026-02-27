@@ -1,4 +1,5 @@
-const API_BASE = "/api";
+import { API_BASE, API_ORIGIN } from "../config/api.js";
+import { fetchWithAuth } from "../utils/fetchWithAuth.js"; 
 
 function safeParseJson(response) {
   const contentType = response.headers.get("content-type");
@@ -10,24 +11,24 @@ function safeParseJson(response) {
 
 export async function checkAuth() {
   try {
-    const response = await fetch(`${API_BASE}/user/me`, {
-      method: "GET",
-      credentials: "include",
-    });
+    const response = await fetchWithAuth(`${API_BASE}/user/me`);
 
     if (response.ok) {
       const data = await safeParseJson(response);
+      
       if (!data) {
-        console.warn("Auth check: expected JSON but got non-JSON response. Is the backend running? Proxy configured?");
+        console.warn("Auth check: expected JSON but got non-JSON response.");
         return { success: false };
       }
+
       if (data.user) {
         const userData = {
           _id: data.user._id,
           username: data.user.username,
-          icon: data.user.avatar
-            ? `http://localhost:3000${data.user.avatar}`
-            : "../assets/icon1_default.jpg",
+          usernameOriginal: data.user.usernameOriginal ?? data.user.username,
+          avatar: data.user.avatar
+            ? `${API_ORIGIN}${data.user.avatar}`
+            : `${API_ORIGIN}/uploads/avatars/default-avatar.png`,
           theme: "classic",
           gamesPlayed: data.user.gamesPlayed || 0,
           wins: data.user.gamesWon || 0,
@@ -37,28 +38,15 @@ export async function checkAuth() {
         localStorage.setItem("userData", JSON.stringify(userData));
       }
       return { success: true, user: data.user };
-    } else if (response.status === 401) {
-      const refreshResult = await refreshToken();
-      if (refreshResult.success) {
-        const retryResponse = await fetch(`${API_BASE}/user/me`, {
-          method: "GET",
-          credentials: "include",
-        });
-        if (retryResponse.ok) {
-          const retryData = await safeParseJson(retryResponse);
-          if (retryData?.user) return { success: true, user: retryData.user };
-        }
-      }
-      return { success: false };
-    } else {
-      return { success: false };
     }
+    
+    return { success: false };
+    
   } catch (error) {
     console.error("Auth check error:", error);
     return { success: false };
   }
 }
-
 
 export async function login(username, password) {
   try {
@@ -86,7 +74,7 @@ export async function login(username, password) {
   }
 }
 
-export async function register(username, password, email) {
+export async function register(username, password, email, usernameOriginal = username) {
   try {
     const response = await fetch(`${API_BASE}/reg`, {
       method: "POST",
@@ -96,6 +84,7 @@ export async function register(username, password, email) {
       credentials: "include",
       body: JSON.stringify({
         username,
+        usernameOriginal,
         password,
         email,
       }),
@@ -134,20 +123,16 @@ export async function refreshToken() {
 
 export async function logout() {
   try {
-    const response = await fetch(`${API_BASE}/logout`, {
-      method: "POST",
-      credentials: "include",
+    const response = await fetchWithAuth(`${API_BASE}/logout`, {
+        method: "POST"
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      throw new Error(data.msg || "Logout failed");
+      throw new Error("Logout failed");
     }
 
     localStorage.removeItem("userData");
-
-    return { success: true, message: data.msg };
+    return { success: true };
   } catch (error) {
     return { success: false, message: error.message };
   }

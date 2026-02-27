@@ -2,47 +2,38 @@ const { getDb } = require("../config/db");
 const { comparePassword } = require("../utils/password");
 const { signAccessToken, signRefreshToken } = require("../utils/jwt");
 
+function throwValidation(message, code) {
+  const err = new Error(message);
+  err.code = code;
+  throw err;
+}
+
 async function loginUser({ username, password, userAgent, ip }) {
   const db = getDb();
   const users = db.collection("users");
 
   const user = await users.findOne({ username });
-  if (!user) {
-    const err = new Error("Login or password is incorrect");
-    err.code = "LOGIN_FAILED";
-    throw err;
-  }
+  if (!user) throwValidation("Login or password is incorrect", "LOGIN_FAILED");
 
   const isMatch = await comparePassword(password, user.password);
-  if (!isMatch) {
-    const err = new Error("Login or password is incorrect");
-    err.code = "LOGIN_FAILED";
-    throw err;
-  }
+  if (!isMatch) throwValidation("Login or password is incorrect", "LOGIN_FAILED");
 
-  const accessToken = signAccessToken({
-    userId: user._id.toString(),
-    username: user.username,
-  });
-  const refreshToken = signRefreshToken({
-    userId: user._id.toString(),
-    username: user.username,
-  });
+  const userId = user._id.toString();
+  const accessToken = signAccessToken({ userId, username: user.username });
+  const refreshToken = signRefreshToken({ userId, username: user.username });
 
-  await db
-    .collection("refreshTokens")
-    .updateOne(
-      { userId: user._id.toString() },
-      {
-        $set: {
-          token: refreshToken,
-          createdAt: new Date(),
-          device: userAgent,
-          ip,
-        },
+  await db.collection("refreshTokens").updateOne(
+    { userId },
+    {
+      $set: {
+        token: refreshToken,
+        createdAt: new Date(),
+        device: userAgent,
+        ip,
       },
-      { upsert: true }
-    );
+    },
+    { upsert: true }
+  );
 
   return { accessToken, refreshToken };
 }

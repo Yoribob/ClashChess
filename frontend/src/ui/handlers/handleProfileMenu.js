@@ -4,6 +4,7 @@ import { logout } from "../../auth/authAPI.js"
 import { BtnPressAnim } from "./shared.js";
 import { globalState } from "../../config/globalState.js";
 import { fetchWithAuth } from "../../utils/fetchWithAuth.js";
+import { API_ORIGIN } from "../../config/api.js";
 
 export async function handleProfileMenu() {
   const menu = document.querySelector(".menu");
@@ -22,10 +23,11 @@ export async function handleProfileMenu() {
     globalState.previousMenu = "main";
   }
 
+  const defaultAvatarUrl = API_ORIGIN + "/uploads/avatars/default-avatar.png";
   let user = {
-    
     username: "Player",
-    avatar: "/uploads/avatars/default-avatar.png",
+    usernameOriginal: "Player",
+    avatar: defaultAvatarUrl,
     gamesPlayed: 0,
     gamesWon: 0,
     gamesLost: 0,
@@ -40,7 +42,7 @@ export async function handleProfileMenu() {
         user = {
           username: data.user.username || "Player",
           usernameOriginal: data.user.usernameOriginal || data.user.username,
-          avatar: data.user.avatar || "/uploads/avatars/default-avatar.png",
+          avatar: data.user.avatar ? (data.user.avatar.startsWith("http") ? data.user.avatar : API_ORIGIN + data.user.avatar) : defaultAvatarUrl,
           gamesPlayed: data.user.gamesPlayed || 0,
           gamesWon: data.user.gamesWon || 0,
           gamesLost: data.user.gamesLost || 0,
@@ -142,10 +144,10 @@ export async function handleProfileMenu() {
       const formData = new FormData();
       formData.append("avatar", file);
 
-      const res = await fetch("/api/avatar", { method: "POST", credentials: "include", body: formData });
+      const res = await fetch(API_ORIGIN + "/api/avatar", { method: "POST", credentials: "include", body: formData });
       const data = await res.json();
       if (res.ok) {
-        avatarImg.src = `http://localhost:3000${data.avatarUrl}`;
+        avatarImg.src = data.avatarUrl.startsWith("http") ? data.avatarUrl : API_ORIGIN + data.avatarUrl;
         avatarChangeBtn.querySelector("span").textContent = "UPLOADED!";
       } else throw new Error(data.msg || "Upload failed");
     } catch (err) {
@@ -161,7 +163,6 @@ export async function handleProfileMenu() {
 
 
   logoutBtn?.addEventListener("click", async () => {
-    console.log("ok");
     const originalText = logoutBtn.querySelector(".label").textContent;
     logoutBtn.querySelector(".label").textContent = "LOGGING OUT...";
     logoutBtn.disabled = true;

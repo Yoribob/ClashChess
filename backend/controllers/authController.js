@@ -1,7 +1,23 @@
 const { loginUser } = require("../services/authService");
 const getClientIP = require("../utils/ip");
 
-async function login(req, res) {
+const accessCookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "None",
+  maxAge: 15 * 60 * 1000,
+  path: "/",
+};
+
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: true,
+  sameSite: "None",
+  maxAge: 7 * 24 * 60 * 60 * 1000,
+  path: "/",
+};
+
+async function login(req, res, next) {
   try {
     const { accessToken, refreshToken } = await loginUser({
       username: req.body.username,
@@ -10,26 +26,12 @@ async function login(req, res) {
       ip: getClientIP(req),
     });
 
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "Lax",
-      maxAge: 15 * 60 * 1000,
-      path: "/",
-    });
+    res.cookie("accessToken", accessToken, accessCookieOptions);
     res
-      .cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: false,
-        sameSite: "Lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-        path: "/",
-      })
+      .cookie("refreshToken", refreshToken, refreshCookieOptions)
       .json({ msg: "Logged in successfully" });
   } catch (err) {
-    if (err.code === "LOGIN_FAILED")
-      return res.status(401).json({ msg: "Login or password is incorrect" });
-    res.sendStatus(500);
+    next(err);
   }
 }
 

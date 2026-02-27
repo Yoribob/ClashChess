@@ -1184,10 +1184,14 @@ body{
 }
 
 .player-info{
+    width: 12rem;
     text-align: center;
     display: flex;
     flex-direction: column;
+    justify-content: center;
+    align-items: center;
     gap: 6px;
+    overflow: hidden;
 }
 
 .player-role{
@@ -1197,11 +1201,14 @@ body{
 }
 
 .player-name{
+    width: 100%;
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 4px;
     color: rgba(235, 240, 250, 0.92);
-  
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: clip;
 
 }
 
@@ -1316,39 +1323,6 @@ body{
 }
 
 
-/*
-.lobby-ready-btn:hover {
-    background: linear-gradient(135deg, rgba(var(--done-r), var(--done-g), var(--done-b), 0.2) 0%, rgba(calc(var(--done-r) - 28), calc(var(--done-g) - 41), calc(var(--done-b) - 44), 0.2) 100%);
-    border-color: rgba(var(--done-r), var(--done-g), var(--done-b), 0.6);
-    box-shadow: 0 12px 40px rgba(var(--done-r), var(--done-g), var(--done-b), 0.4),
-                inset 0 0 30px rgba(var(--done-r), var(--done-g), var(--done-b), 0.1);
-}
-
-.lobby-ready-btn .label {
-    color: rgba(200, 200, 200, 0.9);
-    transition: color 0.4s ease;
-}
-
-.lobby-ready-btn:hover .label {
-    color: rgba(var(--done-r), var(--done-g), var(--done-b), 1);
-    letter-spacing: 3px;
-    font-weight: 700;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    animation: none;
-}
-
-.lobby-ready-btn:hover{
-    transform: translateY(-2px);
-    box-shadow: 0 20px 60px rgba(30, 55, 38, 0.6);
-}
-
-.lobby-ready-btn:active{
-    transform: translateY(1px);
-}
-*/
-
 .lobby-ready-btn{
     height: 60%;
     min-height: 40px;
@@ -1402,15 +1376,6 @@ body{
     }
 }
 
-.lobby-player-card{
-    font-size: 11px;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    color: rgba(205, 210, 220, 0.45);
-    -webkit-user-drag: none;
-
-
-}
 
 a,
 a:visited,
@@ -1425,7 +1390,6 @@ a *{
     color: inherit;
 }
 
-/* Join Menu Styles */
 .menu.menu-join{
     width: 44rem;
     height: 20rem;

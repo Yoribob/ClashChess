@@ -6,14 +6,27 @@ const cookieParser = require("cookie-parser");
 const cors = require("cors");
 require("dotenv").config({ override: true });
 const { initDb } = require("./config/db");
+const errorHandler = require("./middleware/errorMiddleware");
 
 const PORT = process.env.PORT || 3000;
 const app = express();
 const httpServer = http.createServer(app);
 
+const corsOriginFn = (origin, callback) => {
+  if (
+    !origin ||
+    origin === "http://localhost:5173" ||
+    origin.endsWith(".vercel.app")
+  ) {
+    callback(null, true);
+  } else {
+    callback(new Error("Not allowed by CORS"));
+  }
+};
+
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: corsOriginFn,
     credentials: true,
   },
 });
@@ -22,11 +35,11 @@ app.set("trust proxy", 1);
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: corsOriginFn,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 app.use(express.json());
@@ -41,6 +54,8 @@ app.use("/api/refresh-token", require("./routes/refreshRoutes"));
 app.use("/api/logout", require("./routes/logoutRoutes"));
 app.use("/api/avatar", require("./routes/avatarRoutes"));
 app.use("/api/lobby", require("./routes/lobbyRoutes"));
+
+app.use(errorHandler);
 
 (async function start() {
   try {
