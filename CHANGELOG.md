@@ -12,6 +12,11 @@ All notable changes to this project will be documented here.
 - Authentication and registration
 - Buttons and navigation for menu options
 
+## [v0.1.1] - 2026-02-28
+### Added
+- Bug fixes
+- UI update
+- Improved security and UX
 
 ### Known Issues / To Be Implemented
 - Chess game logic not yet implemented
