@@ -1188,6 +1188,7 @@ body{
     display: flex;
     flex-direction: column;
     gap: 6px;
+    overflow: hidden;
 }
 
 .player-role{
@@ -1197,12 +1198,12 @@ body{
 }
 
 .player-name{
+    width: 200px;
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 4px;
     color: rgba(235, 240, 250, 0.92);
-  
-
+    overflow: hidden;
 }
 
 .player-status{

@@ -2,7 +2,7 @@ const { getDb } = require("../config/db");
 const { generateCode } = require("../utils/generateCode");
 const { ObjectId } = require("mongodb");
 
-async function createLobby(userId) {
+async function createLobby(userId, settings) {
   const db = getDb();
   const users = db.collection("users");
 
@@ -22,16 +22,32 @@ async function createLobby(userId) {
     },
   ];
 
+  const lobbySettings = settings && typeof settings === "object"
+    ? {
+        mode: settings.mode || "classic",
+        theme: settings.theme || "classic",
+        minigames: Array.isArray(settings.minigames)
+          ? settings.minigames
+          : [],
+      }
+    : {
+        mode: "classic",
+        theme: "classic",
+        minigames: [],
+      };
+
   await lobbies.insertOne({
     LobbyId: lobbyCode,
     createdBy: user._id,
     createdAt: new Date(),
     players,
+    settings: lobbySettings,
   });
 
   return {
     lobbyId: lobbyCode,
     players,
+    settings: lobbySettings,
   };
 }
 

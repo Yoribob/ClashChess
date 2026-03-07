@@ -47,3 +47,47 @@ export function PositionFromFEN(fenString, scene) {
     rankIndex++;
   }
 }
+
+export function syncBoardFromBackend(board, scene) {
+  if (!board || typeof board !== "object") return;
+
+  const boardSquares = new Set(Object.keys(board));
+
+  Object.entries(pieces).forEach(([square, piece]) => {
+    const code = board[square];
+    if (!code) {
+      if (piece.mesh && piece.mesh.parent) {
+        piece.mesh.parent.remove(piece.mesh);
+      }
+      delete pieces[square];
+      return;
+    }
+
+    const color = code[0];
+    const type = code[1].toLowerCase();
+    if (piece.color !== color || piece.type !== type) {
+      if (piece.mesh && piece.mesh.parent) {
+        piece.mesh.parent.remove(piece.mesh);
+      }
+      delete pieces[square];
+    }
+  });
+
+  for (const [squareNotation, code] of Object.entries(board)) {
+    if (!code || typeof code !== "string" || code.length < 2) continue;
+    const color = code[0];
+    const type = code[1].toLowerCase();
+
+    const existing = pieces[squareNotation];
+    if (existing && existing.color === color && existing.type === type) {
+      existing.position = squareNotation;
+      continue;
+    }
+
+    const piece = new Piece(type, color, squareNotation);
+    piece.load((mesh) => {
+      scene.add(mesh);
+    });
+    pieces[squareNotation] = piece;
+  }
+}

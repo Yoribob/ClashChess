@@ -1,4 +1,5 @@
 import { pieces } from "../graphics/pieces.js";
+import { globalState } from "../config/globalState.js";
 
 const files = "abcdefgh";
 
@@ -85,7 +86,6 @@ export function getLegalMoves(squareName, selectedPiece) {
   const allowedMoves = [];
 
   if (!selectedPiece || !selectedPiece.position) {
-    console.error("Invalid piece in getLegalMoves:", selectedPiece);
     return [];
   }
 
@@ -155,6 +155,11 @@ export function getLegalMoves(squareName, selectedPiece) {
         );
         if (targetPiece && targetPiece.color !== selectedPiece.color) {
           allowedMoves.push(diagSquare);
+        } else {
+          const ep = globalState.chess?.enPassantTarget || null;
+          if (ep && ep === diagSquare) {
+            allowedMoves.push(diagSquare);
+          }
         }
       });
 

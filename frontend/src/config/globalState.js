@@ -21,6 +21,13 @@ export let globalState = {
   activeTheme: null,
   capturedPiece_color: null,
   selectedPiece_color: null,
+  chess: {
+    lobbyId: null,
+    gameId: null,
+    color: null,
+    userId: null,
+    status: "active",
+  },
   utils: {
     applyBlackToAll: null,
     resetAllToOriginal: null,

@@ -15,7 +15,7 @@ import {
   setupClickHandler,
   animateMoveHighlights,
 } from "./game/interaction.js";
-import { PositionFromFEN } from "./game/gameState.js";
+import { PositionFromFEN, syncBoardFromBackend } from "./game/gameState.js";
 import { setPieceTheme, pieces, loadedMeshes } from "./graphics/pieces.js";
 import { showMainMenu } from "./ui/showMainMenu.js";
 import { createAuthMenu } from "./auth/authForm.js";
@@ -26,7 +26,8 @@ import {
   COLOR_SCHEME,
 } from "./config/globalState.js";
 import { InitMenuBg, UndoMenuBg } from "./graphics/menuBg.js";
-import "./socket/index.js"; 
+import "./socket/index.js";
+import { registerChessSocketHandlers } from "./socket/chess.js";
 
 const ACTIVE_THEME = COLOR_SCHEME.classic;
 
@@ -64,13 +65,15 @@ initializeGlobalState(
   scene,
   camera,
   renderer,
-  null, 
+  null,
   controls,
   composer,
   ACTIVE_THEME,
   lights,
   skybox
 );
+
+registerChessSocketHandlers();
 
 if (globalState.controls) {
   globalState.controls.enabled = false;
@@ -107,11 +110,13 @@ initApp();
 window.addEventListener("lobbyCreated", (e) => {
   UndoMenuBg();
 
-  const selectedTheme = globalState.activeTheme;
-  if (!selectedTheme) {
-    console.error("No theme selected!");
-    return;
+  const detail = e?.detail || {};
+  const themeFromSettings = detail.settings?.theme;
+  if (themeFromSettings && COLOR_SCHEME[themeFromSettings]) {
+    globalState.activeTheme = COLOR_SCHEME[themeFromSettings];
   }
+
+  const selectedTheme = globalState.activeTheme || ACTIVE_THEME;
 
   scene.fog = new THREE.FogExp2(
     selectedTheme.scene.fogColor,
@@ -151,8 +156,14 @@ window.addEventListener("lobbyCreated", (e) => {
   const board = createBoard();
   scene.add(board);
   globalState.board = board;
-  const startingFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
-  PositionFromFEN(startingFEN, scene);
+
+  const game = detail.game;
+  if (game && game.board) {
+    syncBoardFromBackend(game.board, scene);
+  } else {
+    const startingFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR";
+    PositionFromFEN(startingFEN, scene);
+  }
   globalState.pieces = pieces;
   globalState.loadedMeshes = loadedMeshes;
 
@@ -182,6 +193,6 @@ function animate() {
   controls.update();
   renderer.render(scene, camera);
   composer.render();
-  time += 0.00;
+  time += 0.0;
 }
 animate();
