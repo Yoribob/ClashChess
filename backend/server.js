@@ -54,6 +54,7 @@ app.use("/api/refresh-token", require("./routes/refreshRoutes"));
 app.use("/api/logout", require("./routes/logoutRoutes"));
 app.use("/api/avatar", require("./routes/avatarRoutes"));
 app.use("/api/lobby", require("./routes/lobbyRoutes"));
+app.use("/api/chess", require("./routes/chessRoutes"));
 
 app.use(errorHandler);
 

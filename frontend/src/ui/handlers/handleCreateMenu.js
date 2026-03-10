@@ -65,7 +65,7 @@ export function handleCreateMenu(menu) {
   const closeBtn = menu.querySelector(".menu-close-btn");
   closeBtn?.addEventListener("click", () => showMainMenu(true));
 
-  menu.querySelector(".type-custom")?.classList.add("selected");
+  menu.querySelector(".type-classic")?.classList.add("selected");
   menu.querySelector(".theme-classic")?.classList.add("selected");
 
   const modeBtns = menu.querySelectorAll(".type");

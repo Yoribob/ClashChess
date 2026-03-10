@@ -2,12 +2,6 @@ const { getDb } = require("../config/db");
 const { hashPassword } = require("../utils/password");
 const { signAccessToken, signRefreshToken } = require("../utils/jwt");
 
-function throwValidation(message, code) {
-  const err = new Error(message);
-  err.code = code;
-  throw err;
-}
-
 async function registerUser({ username, usernameOriginal: bodyUsernameOriginal, password, email, userAgent, ip }) {
   const usernameOriginal = (bodyUsernameOriginal != null && String(bodyUsernameOriginal).trim() !== ""
     ? String(bodyUsernameOriginal).trim()
@@ -18,27 +12,29 @@ async function registerUser({ username, usernameOriginal: bodyUsernameOriginal, 
   if (email) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      throwValidation("Invalid email format", "INVALID_EMAIL");
+      const err = new Error("Invalid email format");
+      err.code = "INVALID_EMAIL";
+      throw err;
     }
   }
-
-  if (username.length > 32) throwValidation("Username is too long", "INVALID_USERNAME");
-  if (username.length < 4) throwValidation("Username is too short", "INVALID_USERNAME");
-  if (/\s/.test(username)) throwValidation("Username must not contain whitespaces", "INVALID_USERNAME");
-
-  if (password.length > 32) throwValidation("Password is too long", "INVALID_PASSWORD");
-  if (password.length < 6) throwValidation("Password is too short", "INVALID_PASSWORD");
-  if (/\s/.test(password)) throwValidation("Password must not contain whitespaces", "INVALID_PASSWORD");
 
   const db = getDb();
   const users = db.collection("users");
 
   const usernameExists = await users.findOne({ username });
-  if (usernameExists) throwValidation("Username already taken", "USER_EXISTS");
+  if (usernameExists) {
+    const err = new Error("Username already taken");
+    err.code = "USER_EXISTS";
+    throw err;
+  }
 
   if (email) {
     const emailExists = await users.findOne({ email });
-    if (emailExists) throwValidation("Email already in use", "EMAIL_EXISTS");
+    if (emailExists) {
+      const err = new Error("Email already in use");
+      err.code = "EMAIL_EXISTS";
+      throw err;
+    }
   }
 
   const hashed = await hashPassword(password);

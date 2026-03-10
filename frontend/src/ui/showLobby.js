@@ -48,7 +48,7 @@ export function showLobbyUI(lobbyCode, data) {
       ? String(h.usernameOriginal ?? h.username)
       : null;
   const hostName = displayName(host) ?? "HOST";
-  const guestName = displayName(guest) ?? "Waiting...";
+  const guestName = displayName(guest) ?? "Waiting";
   const defaultHostAvatar = new URL("/assets/icon_default.jpg", import.meta.url)
     .href;
   const defaultGuestAvatar = new URL(
@@ -65,6 +65,10 @@ export function showLobbyUI(lobbyCode, data) {
       : "NOT READY"
     : "WAITING";
   const bothReady = Boolean(host?.ready && guest?.ready);
+  const amHost =
+    _currentUserId &&
+    host &&
+    String(host.userId || host._id) === String(_currentUserId);
   const currentUserReady =
     host && String(host.userId) === String(_currentUserId)
       ? host.ready
@@ -202,12 +206,18 @@ export function showLobbyUI(lobbyCode, data) {
             labelEl.textContent = "Both players ready";
           } else {
             labelEl.textContent = "Starting...";
-            alert("Game will be started (TBI)");
           }
         }
         if (safeRemaining <= 0) {
           clearLobbyTimer();
           versusEl?.classList.remove("timer-active");
+
+          if (_currentLobbyCode && _currentUserId && amHost) {
+            socket.emit("lobby:startGame", {
+              lobbyId: _currentLobbyCode,
+              userId: _currentUserId,
+            });
+          }
         }
       }, 1000);
     }

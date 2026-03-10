@@ -1,4 +1,5 @@
 import { pieces } from "../graphics/pieces.js";
+import { globalState } from "../config/globalState.js";
 
 const files = "abcdefgh";
 
@@ -9,6 +10,28 @@ export function isKingInCheck(color, pieces) {
   if (!king) return false;
 
   return isSquareUnderAttack(king.position, color === "w" ? "b" : "w", pieces);
+}
+
+export function getCheckHighlightSquares() {
+  const turn = globalState.currentPlayer;
+  if (!turn) return { kingSquare: null, attackerSquares: [] };
+
+  const king = Object.values(pieces).find(
+    (p) => p && p.type === "k" && p.color === turn && p.position
+  );
+  if (!king || !king.position) return { kingSquare: null, attackerSquares: [] };
+
+  const attackingColor = turn === "w" ? "b" : "w";
+  const attackers = Object.values(pieces).filter(
+    (p) => p && p.color === attackingColor && p.position
+  );
+  const attackerSquares = attackers.filter((p) => {
+    const moves = getLegalMoves(p.position, p);
+    return moves && moves.includes(king.position);
+  }).map((p) => p.position);
+
+  if (attackerSquares.length === 0) return { kingSquare: null, attackerSquares: [] };
+  return { kingSquare: king.position, attackerSquares };
 }
 
 export function isSquareUnderAttack(square, attackingColor, pieces) {
@@ -85,7 +108,6 @@ export function getLegalMoves(squareName, selectedPiece) {
   const allowedMoves = [];
 
   if (!selectedPiece || !selectedPiece.position) {
-    console.error("Invalid piece in getLegalMoves:", selectedPiece);
     return [];
   }
 
@@ -155,6 +177,11 @@ export function getLegalMoves(squareName, selectedPiece) {
         );
         if (targetPiece && targetPiece.color !== selectedPiece.color) {
           allowedMoves.push(diagSquare);
+        } else {
+          const ep = globalState.chess?.enPassantTarget || null;
+          if (ep && ep === diagSquare) {
+            allowedMoves.push(diagSquare);
+          }
         }
       });
 

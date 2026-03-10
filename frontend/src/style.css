@@ -1184,12 +1184,9 @@ body{
 }
 
 .player-info{
-    width: 12rem;
     text-align: center;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
     gap: 6px;
     overflow: hidden;
 }
@@ -1201,15 +1198,12 @@ body{
 }
 
 .player-name{
-    width: 100%;
+    width: 200px;
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 4px;
     color: rgba(235, 240, 250, 0.92);
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: clip;
-
 }
 
 .player-status{
@@ -1323,6 +1317,8 @@ body{
 }
 
 
+
+
 .lobby-ready-btn{
     height: 60%;
     min-height: 40px;
@@ -1376,6 +1372,15 @@ body{
     }
 }
 
+.lobby-player-card{
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(205, 210, 220, 0.45);
+    -webkit-user-drag: none;
+
+
+}
 
 a,
 a:visited,
@@ -1389,6 +1394,7 @@ a *{
     text-decoration: none;
     color: inherit;
 }
+
 
 .menu.menu-join{
     width: 44rem;

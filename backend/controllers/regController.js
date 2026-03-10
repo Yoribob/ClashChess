@@ -17,7 +17,7 @@ const refreshCookieOptions = {
   path: "/",
 };
 
-async function register(req, res, next) {
+async function register(req, res) {
   try {
     const { accessToken, refreshToken } = await registerUser({
       username: req.body.username,
@@ -33,7 +33,13 @@ async function register(req, res, next) {
       .cookie("refreshToken", refreshToken, refreshCookieOptions)
       .json({ msg: "Registered successfully" });
   } catch (err) {
-    next(err);
+    if (err.code === "USER_EXISTS")
+      return res.status(409).json({ msg: "Username already taken" });
+    if (err.code === "EMAIL_EXISTS")
+      return res.status(409).json({ msg: "Email already in use" });
+    if (err.code === "INVALID_EMAIL")
+      return res.status(400).json({ msg: "Invalid email format" });
+    res.sendStatus(500);
   }
 }
 

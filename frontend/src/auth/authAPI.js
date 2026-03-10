@@ -1,5 +1,4 @@
 import { API_BASE, API_ORIGIN } from "../config/api.js";
-import { fetchWithAuth } from "../utils/fetchWithAuth.js"; 
 
 function safeParseJson(response) {
   const contentType = response.headers.get("content-type");
@@ -11,24 +10,28 @@ function safeParseJson(response) {
 
 export async function checkAuth() {
   try {
-    const response = await fetchWithAuth(`${API_BASE}/user/me`);
+    console.log("API_BASE:", API_BASE);
+    const response = await fetch(`${API_BASE}/user/me`, {
+      method: "GET",
+      credentials: "include",
+    });
 
     if (response.ok) {
       const data = await safeParseJson(response);
-      
       if (!data) {
-        console.warn("Auth check: expected JSON but got non-JSON response.");
+        console.warn(
+          "Auth check: expected JSON but got non-JSON response. Is the backend running? Proxy configured?",
+        );
         return { success: false };
       }
-
       if (data.user) {
         const userData = {
           _id: data.user._id,
           username: data.user.username,
           usernameOriginal: data.user.usernameOriginal ?? data.user.username,
-          avatar: data.user.avatar
+          icon: data.user.avatar
             ? `${API_ORIGIN}${data.user.avatar}`
-            : `${API_ORIGIN}/uploads/avatars/default-avatar.png`,
+            : "/assets/icon1_default.jpg",
           theme: "classic",
           gamesPlayed: data.user.gamesPlayed || 0,
           wins: data.user.gamesWon || 0,
@@ -38,10 +41,22 @@ export async function checkAuth() {
         localStorage.setItem("userData", JSON.stringify(userData));
       }
       return { success: true, user: data.user };
+    } else if (response.status === 401) {
+      const refreshResult = await refreshToken();
+      if (refreshResult.success) {
+        const retryResponse = await fetch(`${API_BASE}/user/me`, {
+          method: "GET",
+          credentials: "include",
+        });
+        if (retryResponse.ok) {
+          const retryData = await safeParseJson(retryResponse);
+          if (retryData?.user) return { success: true, user: retryData.user };
+        }
+      }
+      return { success: false };
+    } else {
+      return { success: false };
     }
-    
-    return { success: false };
-    
   } catch (error) {
     console.error("Auth check error:", error);
     return { success: false };
@@ -123,16 +138,20 @@ export async function refreshToken() {
 
 export async function logout() {
   try {
-    const response = await fetchWithAuth(`${API_BASE}/logout`, {
-        method: "POST"
+    const response = await fetch(`${API_BASE}/logout`, {
+      method: "POST",
+      credentials: "include",
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error("Logout failed");
+      throw new Error(data.msg || "Logout failed");
     }
 
     localStorage.removeItem("userData");
-    return { success: true };
+
+    return { success: true, message: data.msg };
   } catch (error) {
     return { success: false, message: error.message };
   }

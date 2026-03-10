@@ -19,6 +19,7 @@ export async function fetchWithAuth(url, options = {}) {
         try {
           await refreshPromise;
         } catch (_) {
+          
         }
         response = await fetch(fullUrl, defaultOptions);
         return response;

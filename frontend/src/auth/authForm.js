@@ -106,6 +106,7 @@ export function createAuthMenu(type = "login") {
     </div>
   `;
 
+  const buttons = document.querySelectorAll(".menu-btn");
 
   const form = menu.querySelector("#auth-form");
   const usernameInput = menu.querySelector("#auth-username");
@@ -117,11 +118,6 @@ export function createAuthMenu(type = "login") {
   const switchBtn = menu.querySelector("#auth-switch-btn");
   const backBtn = menu.querySelector("#auth-back-btn");
 
-  const profileBtn = document.querySelector(".profile-btn");
-  if (profileBtn) {
-      profileBtn.classList.add("is-disabled");
-  }
-
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -130,29 +126,15 @@ export function createAuthMenu(type = "login") {
     const password = passwordInput.value;
     const email = emailInput?.value.trim();
     const passwordRepeat = passwordRepeatInput?.value;
-    
 
-    
     errorDiv.textContent = "";
     errorDiv.style.display = "none";
 
-    
     if (!username || !password) {
       showError("Please fill in all required fields");
       return;
     }
-    if(username != username.replace(/\s/g, "")){
-      showError("Username must not contain whitespaces");
-      return;
-    }
-    if(username.length < 4){
-        showError("Username must be at least 4 characters long");
-        return;
-    }
-    if(username.length > 32){
-        showError("Username must not be longer than 32 characters");
-        return;
-    }
+
     if (!isLogin) {
       if (!email) {
         showError("Please enter your email");
@@ -166,14 +148,6 @@ export function createAuthMenu(type = "login") {
         showError("Password must be at least 6 characters");
         return;
       }
-      if (password.length > 32) {
-        showError("Password must not be longer than 32 characters");
-        return;
-      }
-      if(password != password.replace(/\s/g, "")){
-        showError("Password must not contain whitespaces");
-        return;
-      }
     }
 
     submitBtn.disabled = true;
@@ -184,7 +158,6 @@ export function createAuthMenu(type = "login") {
 
     try {
       let result;
-      username.replace(/\s/g, "");
       if (isLogin) {
         result = await login(username, password);
       } else {
@@ -194,6 +167,20 @@ export function createAuthMenu(type = "login") {
       if (result.success) {
         submitBtn.querySelector(".label").textContent = "SUCCESS!";
         submitBtn.classList.add("is-active");
+
+        localStorage.setItem(
+          "userData",
+          JSON.stringify({
+            username,
+            usernameOriginal: rawUsername,
+            icon: "/assets/icon1_default.jpg",
+            theme: "classic",
+            gamesPlayed: 0,
+            wins: 0,
+            losses: 0,
+            rating: 1500,
+          }),
+        );
 
         setTimeout(async () => {
           const authCheck = await checkAuth();

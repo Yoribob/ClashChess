@@ -1,23 +1,28 @@
 const { createLobby } = require("../services/lobbyService");
 
-async function LobbyCreate(req, res, next) {
+async function LobbyCreate(req, res) {
   try {
     const userId = req.body.userId;
+    const settings = req.body.settings || null;
     if (!userId) {
-      const err = new Error("No userId provided");
-      err.code = "MISSING_USERID";
-      throw err;
+      return res.status(400).json({ msg: "No userId provided" });
     }
+    const { lobbyId, players, settings: storedSettings } = await createLobby(
+      userId,
+      settings
+    );
 
-    const { lobbyId, players } = await createLobby(userId);
-
-    res.status(200).json({
+    return res.status(200).json({
       msg: "Lobby successfully created",
       lobbyID: lobbyId,
       players,
+      settings: storedSettings,
     });
   } catch (err) {
-    next(err);
+    return res.status(400).json({
+      msg: "Error during lobby creation",
+      error: err.message,
+    });
   }
 }
 

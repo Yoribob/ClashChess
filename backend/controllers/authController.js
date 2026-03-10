@@ -17,7 +17,7 @@ const refreshCookieOptions = {
   path: "/",
 };
 
-async function login(req, res, next) {
+async function login(req, res) {
   try {
     const { accessToken, refreshToken } = await loginUser({
       username: req.body.username,
@@ -31,7 +31,9 @@ async function login(req, res, next) {
       .cookie("refreshToken", refreshToken, refreshCookieOptions)
       .json({ msg: "Logged in successfully" });
   } catch (err) {
-    next(err);
+    if (err.code === "LOGIN_FAILED")
+      return res.status(401).json({ msg: "Login or password is incorrect" });
+    res.sendStatus(500);
   }
 }
 
