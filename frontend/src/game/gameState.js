@@ -51,27 +51,54 @@ export function PositionFromFEN(fenString, scene) {
 export function syncBoardFromBackend(board, scene) {
   if (!board || typeof board !== "object") return;
 
-  const boardSquares = new Set(Object.keys(board));
-
+  const toRemove = [];
   Object.entries(pieces).forEach(([square, piece]) => {
     const code = board[square];
     if (!code) {
-      if (piece.mesh && piece.mesh.parent) {
-        piece.mesh.parent.remove(piece.mesh);
-      }
-      delete pieces[square];
+      toRemove.push(square);
       return;
     }
 
     const color = code[0];
     const type = code[1].toLowerCase();
     if (piece.color !== color || piece.type !== type) {
+      toRemove.push(square);
+      return;
+    }
+    if (piece.position !== square) {
+      piece.position = square;
+    }
+  });
+
+  for (const square of toRemove) {
+    const piece = pieces[square];
+    if (piece) {
       if (piece.mesh && piece.mesh.parent) {
         piece.mesh.parent.remove(piece.mesh);
       }
+      piece.position = null;
       delete pieces[square];
     }
+  }
+
+  const ghostKeys = [];
+  Object.entries(pieces).forEach(([key, piece]) => {
+    if (!piece || !piece.position) return;
+    const code = board[piece.position];
+    if (!code || code[0] !== piece.color || code[1].toLowerCase() !== piece.type) {
+      ghostKeys.push(key);
+    }
   });
+  for (const key of ghostKeys) {
+    const piece = pieces[key];
+    if (piece) {
+      if (piece.mesh && piece.mesh.parent) {
+        piece.mesh.parent.remove(piece.mesh);
+      }
+      piece.position = null;
+      delete pieces[key];
+    }
+  }
 
   for (const [squareNotation, code] of Object.entries(board)) {
     if (!code || typeof code !== "string" || code.length < 2) continue;

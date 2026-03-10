@@ -182,6 +182,9 @@ window.addEventListener("lobbyCreated", (e) => {
   }
 
   setupClickHandler(renderer, camera, globalState.board);
+  import("./game/interaction.js").then((m) => {
+    if (m.updateCheckHighlightsFromMain) m.updateCheckHighlightsFromMain();
+  });
 });
 function animate() {
   requestAnimationFrame(animate);

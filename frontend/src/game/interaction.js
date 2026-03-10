@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { loadedMeshes, pieces } from "../graphics/pieces.js";
 import { addOutlineToPieces } from "../postprocessing.js";
-import { getLegalMovesWithCheckValidation } from "./gameLogic.js";
+import { getLegalMovesWithCheckValidation, getCheckHighlightSquares } from "./gameLogic.js";
 import { InitClash } from "./clashManager.js";
 import { globalState } from "../config/globalState.js";
 import socket from "../socket/index.js";
@@ -9,16 +9,21 @@ import { syncBoardFromBackend } from "./gameState.js";
 
 let selectedPiece = null;
 let moveHighlights = [];
+let checkHighlights = [];
 let isMovePending = false;
 let pendingMove = null;
 let chessHandlersAttached = false;
+let gameEndAlertShownForGameId = null;
 
 function isMultiplayerActive() {
   return Boolean(globalState.chess && globalState.chess.gameId);
 }
 
 function isMyTurn() {
-  return true;
+  if (!isMultiplayerActive() || !globalState.chess) return true;
+  if (globalState.chess.status !== "active") return false;
+  const myColor = globalState.chess.color === "white" ? "w" : "b";
+  return globalState.currentPlayer === myColor;
 }
 
 function resetSelection(board) {
@@ -37,6 +42,49 @@ function clearMoveHighlights(board) {
     board.remove(highlight);
   });
   moveHighlights = [];
+}
+
+function clearCheckHighlights(board) {
+  if (!board) return;
+  checkHighlights.forEach((h) => board.remove(h));
+  checkHighlights = [];
+}
+
+function createCheckHighlight(squareNotation) {
+  const file = squareNotation.charCodeAt(0) - "a".charCodeAt(0);
+  const rank = parseInt(squareNotation[1]) - 1;
+  const x = file - 3.5;
+  const z = 3.5 - rank;
+  const geometry = new THREE.PlaneGeometry(0.95, 0.95);
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xcc0000,
+    transparent: true,
+    opacity: 0.9,
+    side: THREE.DoubleSide,
+  });
+  const highlight = new THREE.Mesh(geometry, material);
+  highlight.position.set(x, 0.11, z);
+  highlight.rotation.x = -Math.PI / 2;
+  highlight.userData.type = "checkHighlight";
+  highlight.userData.square = squareNotation;
+  return highlight;
+}
+
+function updateCheckHighlights(board) {
+  if (!board) return;
+  clearCheckHighlights(board);
+  if (!globalState.chess || globalState.chess.status !== "active") return;
+  const { kingSquare, attackerSquares } = getCheckHighlightSquares();
+  const squares = kingSquare ? [kingSquare, ...attackerSquares] : [];
+  squares.forEach((sq) => {
+    const h = createCheckHighlight(sq);
+    board.add(h);
+    checkHighlights.push(h);
+  });
+}
+
+export function updateCheckHighlightsFromMain() {
+  updateCheckHighlights(globalState.board);
 }
 
 function removePieceAtSquare(square) {
@@ -204,12 +252,32 @@ export function setupClickHandler(renderer, camera, board) {
   function applyServerMove(game, lastMove, fullSync) {
     if (!game) return;
 
+    const boardRef = globalState.board || board;
+
     if (globalState.chess) {
+      globalState.chess.status = game.status || globalState.chess.status;
       globalState.chess.enPassantTarget = game?.enPassantTarget || null;
       if (game.board) {
         globalState.chess.board = game.board;
       }
     }
+
+    switchPlayerFromServer(game);
+
+    function showGameEndAlertIfNeeded() {
+      const status = game.status;
+      if (status !== "checkmate" && status !== "stalemate" && status !== "draw") return;
+      const gid = game._id || globalState.chess?.gameId;
+      if (!gid || gameEndAlertShownForGameId === gid) return;
+      gameEndAlertShownForGameId = gid;
+      const messages = {
+        checkmate: "Checkmate! Game over.",
+        stalemate: "Stalemate! The game is a draw.",
+        draw: "Draw! The game is over.",
+      };
+      alert(messages[status] || `Game ended: ${status}`);
+    }
+    showGameEndAlertIfNeeded();
 
     if (fullSync && game.board) {
       syncBoardFromBackend(game.board, globalState.scene);
@@ -222,12 +290,14 @@ export function setupClickHandler(renderer, camera, board) {
           pieces[selectedPiece.position] !== selectedPiece
         )
       ) {
-        resetSelection(globalState.board || board);
+        resetSelection(boardRef);
       }
+      updateCheckHighlights(boardRef);
       return;
     }
 
     if (!lastMove || !lastMove.from || !lastMove.to) {
+      updateCheckHighlights(boardRef);
       return;
     }
 
@@ -243,6 +313,7 @@ export function setupClickHandler(renderer, camera, board) {
         "No local piece found for server move, desync, ignoring",
         lastMove
       );
+      updateCheckHighlights(boardRef);
       return;
     }
 
@@ -271,8 +342,8 @@ export function setupClickHandler(renderer, camera, board) {
     }
 
     movePiece(pieceToMove, to);
-    resetSelection(globalState.board || board);
-    switchPlayerFromServer(game);
+    resetSelection(boardRef);
+    updateCheckHighlights(boardRef);
   }
 
   function attachChessSocketHandlers() {
@@ -372,7 +443,18 @@ export function setupClickHandler(renderer, camera, board) {
       const boardState = chessState?.board;
       const codeFromBoard =
         pieceSquare && boardState ? boardState[pieceSquare] : null;
+
+      if (isMultiplayerActive()) {
+        if (!boardState || !codeFromBoard) {
+          return;
+        }
+      }
+
       const colorFromBoard = codeFromBoard ? codeFromBoard[0] : piece.color;
+
+      if (!isMyTurn()) {
+        return;
+      }
 
       if (isMultiplayerActive()) {
         const myColor = chessState?.color === "white" ? "w" : "b";
@@ -402,6 +484,9 @@ export function setupClickHandler(renderer, camera, board) {
       const { square: squareNotation } = getSquareFromHit(clickedObject);
 
       if (!selectedPiece && squareNotation) {
+        if (!isMyTurn()) {
+          return;
+        }
         const chessState = globalState.chess;
         const boardState = chessState?.board;
         const code = boardState ? boardState[squareNotation] : null;

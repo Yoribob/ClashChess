@@ -12,6 +12,28 @@ export function isKingInCheck(color, pieces) {
   return isSquareUnderAttack(king.position, color === "w" ? "b" : "w", pieces);
 }
 
+export function getCheckHighlightSquares() {
+  const turn = globalState.currentPlayer;
+  if (!turn) return { kingSquare: null, attackerSquares: [] };
+
+  const king = Object.values(pieces).find(
+    (p) => p && p.type === "k" && p.color === turn && p.position
+  );
+  if (!king || !king.position) return { kingSquare: null, attackerSquares: [] };
+
+  const attackingColor = turn === "w" ? "b" : "w";
+  const attackers = Object.values(pieces).filter(
+    (p) => p && p.color === attackingColor && p.position
+  );
+  const attackerSquares = attackers.filter((p) => {
+    const moves = getLegalMoves(p.position, p);
+    return moves && moves.includes(king.position);
+  }).map((p) => p.position);
+
+  if (attackerSquares.length === 0) return { kingSquare: null, attackerSquares: [] };
+  return { kingSquare: king.position, attackerSquares };
+}
+
 export function isSquareUnderAttack(square, attackingColor, pieces) {
   if (!square) return false;
 

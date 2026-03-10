@@ -11,6 +11,25 @@ function getGamesCollection() {
   return db.collection("games");
 }
 
+function getUsersCollection() {
+  return getDb().collection("users");
+}
+
+async function updateWinLossStats(winnerId, loserId) {
+  if (!winnerId || !loserId) return;
+  const users = getUsersCollection();
+  await Promise.all([
+    users.updateOne(
+      { _id: new ObjectId(winnerId) },
+      { $inc: { gamesWon: 1, gamesPlayed: 1 } }
+    ),
+    users.updateOne(
+      { _id: new ObjectId(loserId) },
+      { $inc: { gamesLost: 1, gamesPlayed: 1 } }
+    ),
+  ]);
+}
+
 function mapGameDoc(doc) {
   if (!doc) return null;
   return {
@@ -141,6 +160,12 @@ async function makeMove(gameId, move) {
     enPassantTarget: updatedDoc.enPassantTarget,
     moves: updatedDoc.moves,
   });
+
+  if (saved.status === "checkmate") {
+    const loserId = saved.turn === "white" ? gameDoc.players.white : gameDoc.players.black;
+    const winnerId = saved.turn === "white" ? gameDoc.players.black : gameDoc.players.white;
+    await updateWinLossStats(winnerId, loserId);
+  }
 
   return { ok: true, game: saved, move };
 }
