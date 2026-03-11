@@ -79,13 +79,22 @@ export async function joinLobby() {
 
       if (!socket._lobbyListenersAdded) {
         socket._lobbyListenersAdded = true;
-        socket.on("lobby:update", ({ lobbyId, users, settings: lobbySettings }) => {
+
+        const onLobbyUpdate = ({ lobbyId, users, settings: lobbySettings }) => {
           const list = users || [];
           const host = list[0]
-            ? { ...list[0], userId: String(list[0].userId ?? list[0]._id), username: list[0].username ?? "HOST" }
+            ? {
+                ...list[0],
+                userId: String(list[0].userId ?? list[0]._id),
+                username: list[0].username ?? "HOST",
+              }
             : {};
           const guest = list[1]
-            ? { ...list[1], userId: String(list[1].userId ?? list[1]._id), username: list[1].username ?? "GUEST" }
+            ? {
+                ...list[1],
+                userId: String(list[1].userId ?? list[1]._id),
+                username: list[1].username ?? "GUEST",
+              }
             : null;
           showLobbyUI(lobbyId || lobbyCode, {
             host,
@@ -93,7 +102,10 @@ export async function joinLobby() {
             players: list,
             settings: lobbySettings || lobbyData.settings || null,
           });
-        });
+        };
+
+        socket._lobbyUpdateHandler = onLobbyUpdate;
+        socket.on("lobby:update", onLobbyUpdate);
         socket.on("lobby:error", ({ message }) => alert(message || "Lobby error"));
       }
     } catch (err) {

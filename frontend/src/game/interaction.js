@@ -6,6 +6,8 @@ import { InitClash } from "./clashManager.js";
 import { globalState } from "../config/globalState.js";
 import socket from "../socket/index.js";
 import { syncBoardFromBackend } from "./gameState.js";
+import { updateMiniAndFullBoard } from "../ui/miniBoard.js";
+import { showGameOverModal } from "../ui/gameOverModal.js";
 
 let selectedPiece = null;
 let moveHighlights = [];
@@ -13,7 +15,12 @@ let checkHighlights = [];
 let isMovePending = false;
 let pendingMove = null;
 let chessHandlersAttached = false;
+let clickHandlerAttached = false;
 let gameEndAlertShownForGameId = null;
+
+export function resetGameEndAlertForNewGame() {
+  gameEndAlertShownForGameId = null;
+}
 
 function isMultiplayerActive() {
   return Boolean(globalState.chess && globalState.chess.gameId);
@@ -111,6 +118,9 @@ function removePieceAtSquare(square) {
 }
 
 export function setupClickHandler(renderer, camera, board) {
+  if (clickHandlerAttached) return;
+  clickHandlerAttached = true;
+
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
 
@@ -252,11 +262,12 @@ export function setupClickHandler(renderer, camera, board) {
   function applyServerMove(game, lastMove, fullSync) {
     if (!game) return;
 
-    const boardRef = globalState.board || board;
+    const boardRef = globalState.board;
 
     if (globalState.chess) {
       globalState.chess.status = game.status || globalState.chess.status;
       globalState.chess.enPassantTarget = game?.enPassantTarget || null;
+      globalState.chess.castling = game?.castling || globalState.chess.castling || null;
       if (game.board) {
         globalState.chess.board = game.board;
       }
@@ -270,14 +281,13 @@ export function setupClickHandler(renderer, camera, board) {
       const gid = game._id || globalState.chess?.gameId;
       if (!gid || gameEndAlertShownForGameId === gid) return;
       gameEndAlertShownForGameId = gid;
-      const messages = {
-        checkmate: "Checkmate! Game over.",
-        stalemate: "Stalemate! The game is a draw.",
-        draw: "Draw! The game is over.",
-      };
-      alert(messages[status] || `Game ended: ${status}`);
+      showGameOverModal(game);
     }
     showGameEndAlertIfNeeded();
+
+    if (globalState.chess && globalState.chess.board) {
+      updateMiniAndFullBoard(globalState.chess.board);
+    }
 
     if (fullSync && game.board) {
       syncBoardFromBackend(game.board, globalState.scene);
@@ -369,6 +379,9 @@ export function setupClickHandler(renderer, camera, board) {
   attachChessSocketHandlers();
 
   document.addEventListener("click", (event) => {
+    const board = globalState.board;
+    if (!board) return;
+
     mouse.set(
       (event.clientX / window.innerWidth) * 2 - 1,
       -(event.clientY / window.innerHeight) * 2 + 1

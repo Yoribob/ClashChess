@@ -170,9 +170,30 @@ async function makeMove(gameId, move) {
   return { ok: true, game: saved, move };
 }
 
+
+async function endGameAsCheckmate(gameId, loserColor) {
+  const gameDoc = await findGameById(gameId);
+  if (!gameDoc) throw new Error("Game not found");
+  if (gameDoc.status !== "active") return gameDoc;
+
+  const updated = await updateGameById(gameId, {
+    status: "checkmate",
+    turn: loserColor,
+  });
+
+  const winnerId =
+    loserColor === "white" ? gameDoc.players.black : gameDoc.players.white;
+  const loserId =
+    loserColor === "white" ? gameDoc.players.white : gameDoc.players.black;
+  await updateWinLossStats(winnerId, loserId);
+
+  return updated;
+}
+
 module.exports = {
   createChessGame,
   getChessGame,
   makeMove,
+  endGameAsCheckmate,
 };
 

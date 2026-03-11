@@ -1,6 +1,8 @@
 import socket from "./index.js";
 import { fetchWithAuth } from "../utils/fetchWithAuth.js";
 import { COLOR_SCHEME, globalState } from "../config/globalState.js";
+import { closeGameOverModal } from "../ui/gameOverModal.js";
+import { resetGameEndAlertForNewGame } from "../game/interaction.js";
 
 let chessHandlersRegistered = false;
 let chessSyncIntervalId = null;
@@ -10,11 +12,15 @@ export function registerChessSocketHandlers() {
 
   socket.on("chess:start", async ({ lobbyId, gameId, game, settings }) => {
     try {
+      closeGameOverModal();
+
       if (globalState.chess?.gameId && globalState.chess.gameId === gameId) {
         globalState.currentPlayer = game.turn === "white" ? "w" : "b";
         globalState.chess.status = game.status;
         return;
       }
+
+      resetGameEndAlertForNewGame();
 
       const res = await fetchWithAuth("/api/user/me");
       if (!res.ok) {
@@ -49,6 +55,7 @@ export function registerChessSocketHandlers() {
         status: game.status,
         mode: settings?.mode || "classic",
         enPassantTarget: game.enPassantTarget || null,
+        castling: game.castling || null,
         board: game.board || {},
       };
 

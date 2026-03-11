@@ -21,6 +21,7 @@ export let globalState = {
   activeTheme: null,
   capturedPiece_color: null,
   selectedPiece_color: null,
+  viewMode: "3d",
   chess: {
     lobbyId: null,
     gameId: null,
@@ -48,7 +49,7 @@ export const COLOR_SCHEME = {
       accent1: { color: 0xff6b9d, intensity: 1.2 },
       accent2: { color: 0x9b59b6, intensity: 1.2 },
     },
-    skybox: "indoor",
+    skybox: "void",
   },
   classic: {
     scene: { fogColor: 0x8b4513, fogDensity: 0.012 },
@@ -63,7 +64,7 @@ export const COLOR_SCHEME = {
       accent1: { color: 0xf0e68c, intensity: 0.6 },
       accent2: { color: 0xfaf0e6, intensity: 0.6 },
     },
-    skybox: "indoor",
+    skybox: "void",
   },
   cyberpunk: {
     scene: { fogColor: 0x000511, fogDensity: 0.025 },
@@ -78,7 +79,7 @@ export const COLOR_SCHEME = {
       accent1: { color: 0xff3d00, intensity: 1.8 },
       accent2: { color: 0x7c4dff, intensity: 1.8 },
     },
-    skybox: "indoor",
+    skybox: "void",
   },
 };
 

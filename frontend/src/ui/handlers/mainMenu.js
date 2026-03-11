@@ -3,11 +3,17 @@ import { BtnPressAnim } from "./shared.js";
 import { handleCreateMenu } from "./handleCreateMenu.js";
 import { handleJoinMenu } from "./handleJoinMenu.js";
 import { handleProfileMenu } from "./handleProfileMenu.js";
+import { globalState } from "../../config/globalState.js";
+import { createInitialBoard } from "../../game/boardEngine.js";
+import { setViewMode } from "../miniBoard.js";
+import { showGameOverModal } from "../gameOverModal.js";
 
 export function initMainMenuButtons() {
   const casualBtn = document.querySelector(".casual");
   const rankedBtn = document.querySelector(".ranked");
   const profileBtn = document.querySelector(".profile-btn");
+  const quickTestBtn = document.querySelector(".quick-test-btn");
+  const quickGameOverBtn = document.querySelector(".quick-gameover-btn");
 
   if (casualBtn) {
     const newBtn = casualBtn.cloneNode(true); 
@@ -110,6 +116,87 @@ export function initMainMenuButtons() {
     const newBtn = profileBtn.cloneNode(true);
     profileBtn.parentNode.replaceChild(newBtn, profileBtn);
     newBtn.addEventListener("click", () => handleProfileMenu());
+  }
+
+  if (quickTestBtn) {
+    const newBtn = quickTestBtn.cloneNode(true);
+    quickTestBtn.parentNode.replaceChild(newBtn, quickTestBtn);
+    newBtn.addEventListener("click", () => {
+      const board = createInitialBoard();
+      const castling = {
+        whiteKingSide: true,
+        whiteQueenSide: true,
+        blackKingSide: true,
+        blackQueenSide: true,
+      };
+      const game = {
+        _id: "local",
+        players: { white: "local", black: "local" },
+        board,
+        turn: "white",
+        status: "active",
+        castling,
+        enPassantTarget: null,
+      };
+
+      globalState.currentPlayer = "w";
+      globalState.chess = {
+        lobbyId: "local",
+        gameId: null,
+        color: "white",
+        userId: "local",
+        status: "active",
+        mode: "classic",
+        enPassantTarget: null,
+        castling,
+        board,
+      };
+
+      window.dispatchEvent(
+        new CustomEvent("lobbyCreated", {
+          detail: {
+            game,
+            settings: { theme: "classic", mode: "classic" },
+            color: "white",
+          },
+        })
+      );
+
+      setTimeout(() => setViewMode("2d"), 200);
+    });
+  }
+
+  if (quickGameOverBtn) {
+    const newBtn = quickGameOverBtn.cloneNode(true);
+    quickGameOverBtn.parentNode.replaceChild(newBtn, quickGameOverBtn);
+    newBtn.addEventListener("click", () => {
+      
+      
+      let winnerUsernameOriginal = null;
+      try {
+        const raw = window.localStorage.getItem("userData");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const rawName =
+            parsed.usernameOriginal &&
+            String(parsed.usernameOriginal).trim().length
+              ? String(parsed.usernameOriginal).trim()
+              : parsed.username && String(parsed.username).trim().length
+              ? String(parsed.username).trim()
+              : null;
+          winnerUsernameOriginal = rawName;
+        }
+      } catch {
+        
+      }
+
+      const mockGame = {
+        status: "checkmate",
+        turn: "black", 
+        winnerUsernameOriginal: winnerUsernameOriginal,
+      };
+      showGameOverModal(mockGame);
+    });
   }
 
   BtnPressAnim();
