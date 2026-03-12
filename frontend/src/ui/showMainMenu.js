@@ -17,7 +17,7 @@ export function showMainMenu(isReturned = false) {
   menu.innerHTML = `
     <div class="menu-header">
       <h1 class="menu-title">PLAY</h1>
-      <p class="menu-subtitle">3D CHESS GAME</p>
+      <p class="menu-subtitle">Clash Chess</p>
     </div>
     <div class="menu-options">
       <div class="menu-option-card casual menu-btn" data-action="create">
