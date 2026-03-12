@@ -65,4 +65,28 @@ describe("Castling", () => {
     expect(moves).not.toContain("g1");
   });
 
+  test("Cannot castle while in check", () => {
+    let game = createGame("w1", "b1");
+    game.board = {
+      e1: "wk",
+      h1: "wr",
+      e8: "bk",
+      e2: "br",
+    };
+    let moves = getLegalMoves("e1", game.board, "w", game.castlingRights, null);
+    expect(moves).not.toContain("g1");
+  });
+
+  test("Cannot castle through check", () => {
+    let game = createGame("w1", "b1");
+    game.board = {
+      e1: "wk",
+      h1: "wr",
+      e8: "bk",
+      f3: "br", // attacks f1
+    };
+    let moves = getLegalMoves("e1", game.board, "w", game.castlingRights, null);
+    expect(moves).not.toContain("g1");
+  });
+
 });

@@ -10,7 +10,7 @@ const createSkyboxWithTheme = (theme) => {
   const skyboxMaterials = {
     space: () => {
       const loader = new THREE.TextureLoader();
-      const spaceTexture = loader.load("https:
+      const spaceTexture = loader.load("https://cdn.eso.org/images/publicationjpg/eso0932a.jpg");
       return new THREE.MeshBasicMaterial({
         map: spaceTexture,
         side: THREE.BackSide,
@@ -68,7 +68,7 @@ const createSkyboxWithTheme = (theme) => {
         }
       `;
 
-      const fragmentShader = `
+    const fragmentShader = `
         precision highp float;
         varying vec3 vPos;
         uniform vec2  u_res;

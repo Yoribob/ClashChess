@@ -14,7 +14,7 @@ const httpServer = http.createServer(app);
 const corsOriginFn = (origin, callback) => {
   if (
     !origin ||
-    origin === "http:
+    origin === "http://localhost:5173" ||
     origin.endsWith(".vercel.app")
   ) {
     callback(null, true);

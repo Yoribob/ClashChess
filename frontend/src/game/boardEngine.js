@@ -128,10 +128,12 @@ function getQueenMoves(square, board, turn) {
   return [...getBishopMoves(square, board, turn), ...getRookMoves(square, board, turn)];
 }
 
-function getKingMoves(square, board, turn, castlingRightsRaw) {
+function getKingMoves(square, board, turn, castlingRightsRaw, ignoreCheck = false) {
   const castlingRights = normalizeCastlingRights(castlingRightsRaw);
+  const rights = castlingRights[turn] || { kingside: false, queenside: false };
   const moves = [];
   const { x, y } = squareToCoords(square);
+  const opponent = turn === "w" ? "b" : "w";
 
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
@@ -144,13 +146,17 @@ function getKingMoves(square, board, turn, castlingRightsRaw) {
     }
   }
 
-  const rights = castlingRights[turn] || { kingside: false, queenside: false };
-  if (rights.kingside) {
+  // Standard chess: cannot castle while in check, through check, or into check
+  // When ignoreCheck (attack generation), skip these checks to avoid recursion
+  const canCastle = ignoreCheck || !isInCheck({ board }, turn);
+
+  if (canCastle && rights.kingside) {
     const fSquare = coordsToSquare(x + 1, y);
     const gSquare = coordsToSquare(x + 2, y);
     const rookSquare = coordsToSquare(x + 3, y);
+    const throughSafe = ignoreCheck || (fSquare && !isSquareAttacked(board, fSquare, opponent));
     if (
-      fSquare && gSquare && rookSquare &&
+      throughSafe && fSquare && gSquare && rookSquare &&
       !isSquareOccupied(board, fSquare) &&
       !isSquareOccupied(board, gSquare) &&
       board[rookSquare] &&
@@ -159,13 +165,14 @@ function getKingMoves(square, board, turn, castlingRightsRaw) {
       moves.push(gSquare);
     }
   }
-  if (rights.queenside) {
+  if (canCastle && rights.queenside) {
     const dSquare = coordsToSquare(x - 1, y);
     const cSquare = coordsToSquare(x - 2, y);
     const bSquare = coordsToSquare(x - 3, y);
     const rookSquare = coordsToSquare(x - 4, y);
+    const throughSafe = ignoreCheck || (dSquare && !isSquareAttacked(board, dSquare, opponent));
     if (
-      dSquare && cSquare && bSquare && rookSquare &&
+      throughSafe && dSquare && cSquare && bSquare && rookSquare &&
       !isSquareOccupied(board, dSquare) &&
       !isSquareOccupied(board, cSquare) &&
       !isSquareOccupied(board, bSquare) &&
@@ -198,7 +205,7 @@ export function getLegalMoves(from, board, turn, castling, enPassantTarget, igno
   else if (t === "b") moves = getBishopMoves(from, board, turn);
   else if (t === "r") moves = getRookMoves(from, board, turn);
   else if (t === "q") moves = getQueenMoves(from, board, turn);
-  else if (t === "k") moves = getKingMoves(from, board, turn, castling);
+  else if (t === "k") moves = getKingMoves(from, board, turn, castling, ignoreCheck);
 
   if (ignoreCheck) return moves;
 

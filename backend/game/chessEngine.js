@@ -83,9 +83,10 @@ function getBishopMoves(square, board, turn) { return getSlidingMoves(square, bo
 function getRookMoves(square, board, turn) { return getSlidingMoves(square, board, turn, [[0,1],[1,0],[0,-1],[-1,0]]); }
 function getQueenMoves(square, board, turn) { return [...getBishopMoves(square, board, turn), ...getRookMoves(square, board, turn)]; }
 
-function getKingMoves(square, board, turn, castlingRights) {
+function getKingMoves(square, board, turn, castlingRights, ignoreCheck=false) {
   const moves = [];
   const { x, y } = squareToCoords(square);
+  const opponent = turn === "w" ? "b" : "w";
 
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
@@ -98,11 +99,15 @@ function getKingMoves(square, board, turn, castlingRights) {
     }
   }
 
-  if (castlingRights[turn].kingside) {
+  const canCastle = ignoreCheck || !isInCheck({ board }, turn);
+
+  if (canCastle && castlingRights[turn].kingside) {
     const fSquare = coordsToSquare(x + 1, y);
     const gSquare = coordsToSquare(x + 2, y);
     const rookSquare = coordsToSquare(x + 3, y);
+    const throughSafe = ignoreCheck || (fSquare && !isSquareAttacked(board, fSquare, opponent));
     if (
+      throughSafe &&
       !isSquareOccupied(board, fSquare) &&
       !isSquareOccupied(board, gSquare) &&
       board[rookSquare] &&
@@ -112,12 +117,14 @@ function getKingMoves(square, board, turn, castlingRights) {
     }
   }
 
-  if (castlingRights[turn].queenside) {
+  if (canCastle && castlingRights[turn].queenside) {
     const dSquare = coordsToSquare(x - 1, y);
     const cSquare = coordsToSquare(x - 2, y);
     const bSquare = coordsToSquare(x - 3, y);
     const rookSquare = coordsToSquare(x - 4, y);
+    const throughSafe = ignoreCheck || (dSquare && !isSquareAttacked(board, dSquare, opponent));
     if (
+      throughSafe &&
       !isSquareOccupied(board, dSquare) &&
       !isSquareOccupied(board, cSquare) &&
       board[rookSquare] &&
@@ -145,7 +152,7 @@ function isInCheck(state, turn) {
 function getLegalMoves(square, board, turn, castlingRights, enPassantTarget, ignoreCheck=false) {
   const piece = board[square]; if (!piece || getPieceColor(piece) !== turn) return [];
   let moves = [];
-  switch(getPieceType(piece)) { case "p": moves = getPawnMoves(square, board, turn, enPassantTarget); break; case "n": moves = getKnightMoves(square, board, turn); break; case "b": moves = getBishopMoves(square, board, turn); break; case "r": moves = getRookMoves(square, board, turn); break; case "q": moves = getQueenMoves(square, board, turn); break; case "k": moves = getKingMoves(square, board, turn, castlingRights); break; default: moves = []; }
+  switch(getPieceType(piece)) { case "p": moves = getPawnMoves(square, board, turn, enPassantTarget); break; case "n": moves = getKnightMoves(square, board, turn); break; case "b": moves = getBishopMoves(square, board, turn); break; case "r": moves = getRookMoves(square, board, turn); break; case "q": moves = getQueenMoves(square, board, turn); break; case "k": moves = getKingMoves(square, board, turn, castlingRights, ignoreCheck); break; default: moves = []; }
   if (!ignoreCheck) { moves = moves.filter(to => { const fakeState = {...{board, turn, castlingRights, enPassantTarget}, board:{...board}}; fakeState.board[to] = piece; delete fakeState.board[square]; return !isInCheck(fakeState, turn); }); }
   return moves;
 }

@@ -24,14 +24,14 @@ async function uploadAvatar(req, res) {
     );
 
     if (oldAvatarPath && oldAvatarPath.startsWith("/uploads/avatars/")) {
-      const rel = oldAvatarPath.replace(/^\
+      const rel = oldAvatarPath.replace(/^\//, "");
       const oldFilePath = path.join(__dirname, "..", rel);
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
       }
     }
 
-    const fullUrl = `${req.protocol}:
+    const fullUrl = `${req.protocol}://${req.get("host")}${avatarUrl}`;
     res.json({ msg: "Avatar uploaded successfully", avatarUrl, fullUrl });
   } catch (err) {
     console.error("Avatar upload error:", err);
