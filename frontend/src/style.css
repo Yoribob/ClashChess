@@ -5,8 +5,8 @@
 }
 :root{
     --def-r: 212; 
-    --def-g: 175; 
-    --def-b: 55;  
+    --def-g: 106; 
+    --def-b: 113;  
     --done-r: 151;
     --done-g: 232;
     --done-b: 194;
@@ -72,6 +72,56 @@ body{
 
 .scene.game-active {
     pointer-events: auto;
+}
+
+
+.chess-clock{
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 35;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.55);
+    pointer-events: none;
+    min-width: 180px;
+}
+.chess-clock .clock-row{
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+}
+.chess-clock .clock-name{
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: rgba(220, 225, 235, 0.7);
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.chess-clock .clock-time{
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: rgba(245, 247, 250, 0.96);
+    text-shadow: 0 0 18px rgba(var(--def-r), var(--def-g), var(--def-b), 0.22);
+}
+.chess-clock.running-white .clock-white .clock-time{
+    color: rgba(var(--done-r), var(--done-g), var(--done-b), 1);
+    text-shadow: 0 0 22px rgba(var(--done-r), var(--done-g), var(--done-b), 0.35);
+}
+.chess-clock.running-black .clock-black .clock-time{
+    color: rgba(var(--done-r), var(--done-g), var(--done-b), 1);
+    text-shadow: 0 0 22px rgba(var(--done-r), var(--done-g), var(--done-b), 0.35);
 }
 
 
@@ -604,7 +654,7 @@ body{
 
 .menu.menu-create{
     width: 40rem;
-    height: 45rem;
+    height: auto;
     padding: clamp(18px, 2.5vw, 24px);
     gap: clamp(10px, 1.5vw, 14px);
     align-items: stretch;
@@ -706,6 +756,13 @@ body{
     text-align: left;
 }
 
+
+.create-type .time .label{
+    font-size: clamp(14px, 1.8vw, 18px);
+    text-align: center;
+    width: 100%;
+}
+
 .create-hint{
     display: block;
     font-size: clamp(9px, 1.1vw, 11px);
@@ -740,11 +797,64 @@ body{
 .create-type .create-btn{ will-change: transform, opacity; }
 .create-type .create-btn:nth-child(1){ animation-delay: 0.75s; }
 .create-type .create-btn:nth-child(2){ animation-delay: 0.95s; }
+.create-type .create-btn:nth-child(3){ animation-delay: 1.15s; }
+.create-type .create-btn:nth-child(4){ animation-delay: 1.35s; }
+.create-type .create-btn:nth-child(5){ animation-delay: 1.55s; }
 
 .create-theme .create-btn{ will-change: transform, opacity; }
 .create-theme .create-btn:nth-child(1){ animation-delay: 0.75s; }
 .create-theme .create-btn:nth-child(2){ animation-delay: 0.95s; }
 .create-theme .create-btn:nth-child(3){ animation-delay: 1.15s; }
+
+
+.piece-color-input,
+.piece-color-hex{
+    will-change: transform, opacity;
+    animation: SlideToDown 0.6s ease backwards;
+}
+.piece-color-input{ animation-delay: 1.05s; }
+.piece-color-hex{ animation-delay: 1.25s; }
+
+.create-color-row{
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+.join-color-row{
+    justify-content: center;
+    gap: 12px;
+}
+
+.piece-color-input{
+    width: 64px;
+    height: 44px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
+.piece-color-hex{
+    width: clamp(140px, 32vw, 180px);
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.25);
+    color: rgba(245,247,250,0.96);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    outline: none;
+}
+.piece-color-hex:focus{
+    border-color: rgba(var(--def-r), var(--def-g), var(--def-b), 0.55);
+    box-shadow: 0 0 0 3px rgba(var(--def-r), var(--def-g), var(--def-b), 0.12);
+}
+
+
+.menu.menu-join .piece-color-input,
+.menu.menu-join .piece-color-hex{
+    animation: none !important;
+}
 
 .create-minigames .create-btn{ will-change: transform, opacity; }
 .create-minigames .create-btn:nth-child(1){ animation-delay: 0.75s; }
@@ -934,15 +1044,23 @@ body{
 }
 
 .create-done-btn, .lobby-ready-btn{
-    background: linear-gradient(135deg, rgba(var(--done-r), var(--done-g), var(--done-b), 0.16) 0%, rgba(calc(var(--done-r) - 28), calc(var(--done-g) - 41), calc(var(--done-b) - 44), 0.16) 100%);
-    border-color: rgba(var(--done-r), var(--done-g), var(--done-b), 0.7);
+    background: radial-gradient(circle at center, rgba(var(--done-r), var(--done-g), var(--done-b), 0.18) 0%, transparent 55%),
+                linear-gradient(135deg, rgba(48, 60, 78, 0.9) 0%, rgba(25, 28, 40, 0.94) 100%);
+    border-color: rgba(var(--done-r), var(--done-g), var(--done-b), 0.75);
     color: rgba(var(--done-r), var(--done-g), var(--done-b), 1);
-    width: clamp(200px, 40%, 260px);
-    height: 75%;
+    width: clamp(220px, 42%, 280px);
+    min-height: 54px;
     align-items: center;
+    justify-content: center;
     gap: 6px;
-    padding: 14px 18px;
-    margin-top: 2px;
+    padding: 14px 22px;
+    margin-top: 4px;
+    border-radius: 999px;
+    box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(0, 0, 0, 0.7),
+        0 0 28px rgba(var(--done-r), var(--done-g), var(--done-b), 0.25);
+    backdrop-filter: blur(18px) saturate(1.4);
 }
 
 
@@ -972,10 +1090,13 @@ body{
     letter-spacing: 3px;
 }
 .create-done-btn:hover, .lobby-ready-btn:hover{
-    background: linear-gradient(135deg, rgba(var(--done-r), var(--done-g), var(--done-b), 0.2) 0%, rgba(calc(var(--done-r) - 28), calc(var(--done-g) - 41), calc(var(--done-b) - 44), 0.2) 100%);
-    border-color: rgba(var(--done-r), var(--done-g), var(--done-b), 0.6);
-    box-shadow: 0 12px 40px rgba(var(--done-r), var(--done-g), var(--done-b), 0.4),
-                inset 0 0 30px rgba(var(--done-r), var(--done-g), var(--done-b), 0.1);
+    background: radial-gradient(circle at top, rgba(var(--done-r), var(--done-g), var(--done-b), 0.24) 0%, transparent 55%),
+                linear-gradient(135deg, rgba(70, 84, 104, 0.96) 0%, rgba(34, 40, 60, 0.99) 100%);
+    border-color: rgba(var(--done-r), var(--done-g), var(--done-b), 0.9);
+    box-shadow:
+        0 18px 48px rgba(0, 0, 0, 0.9),
+        0 0 40px rgba(var(--done-r), var(--done-g), var(--done-b), 0.45),
+        inset 0 0 30px rgba(var(--done-r), var(--done-g), var(--done-b), 0.22);
 }
 .create-done-btn .label, .lobby-ready-btn .label{
     color: rgba(200, 200, 200, 0.9);
@@ -1336,9 +1457,6 @@ body{
 
 }
 
-
-
-
 .lobby-ready-btn{
     height: 60%;
     min-height: 40px;
@@ -1418,7 +1536,7 @@ a *{
 
 .menu.menu-join{
     width: 44rem;
-    height: 20rem;
+    height: auto;
     
     display: flex;
     flex-direction: column;
@@ -1894,33 +2012,6 @@ a *{
     transform: translateY(0) scale(1);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-
-.debug-retry-btn{
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    z-index: 120;
-    padding: 8px 14px;
-    border-radius: 10px;
-    border: 1px solid rgba(240, 217, 181, 0.5);
-    background: rgba(24, 17, 7, 0.95);
-    color: #f8f8ff;
-    font-size: 11px;
-    letter-spacing: 2px;
-    font-weight: 600;
-    text-transform: uppercase;
-    cursor: pointer;
-    box-shadow: 0 10px 24px rgba(0,0,0,0.7);
-}
-.debug-retry-btn:hover{
-    background: rgba(34, 24, 10, 0.98);
-    border-color: rgba(240, 217, 181, 0.8);
-}
-.debug-retry-btn:active{
-    transform: translateY(1px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.6);
 }
 
 @media (max-width: 820px){

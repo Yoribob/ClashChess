@@ -1,13 +1,17 @@
 import * as THREE from "three";
 import { loadedMeshes, pieces } from "../graphics/pieces.js";
 import { addOutlineToPieces } from "../postprocessing.js";
-import { getLegalMovesWithCheckValidation, getCheckHighlightSquares } from "./gameLogic.js";
+import {
+  getLegalMovesWithCheckValidation,
+  getCheckHighlightSquares,
+} from "./gameLogic.js";
 import { InitClash } from "./clashManager.js";
 import { globalState } from "../config/globalState.js";
 import socket from "../socket/index.js";
 import { syncBoardFromBackend } from "./gameState.js";
 import { updateMiniAndFullBoard } from "../ui/miniBoard.js";
 import { showGameOverModal } from "../ui/gameOverModal.js";
+import { showPromotionModal } from "../ui/promotionModal.js";
 
 let selectedPiece = null;
 let moveHighlights = [];
@@ -31,6 +35,14 @@ function isMyTurn() {
   if (globalState.chess.status !== "active") return false;
   const myColor = globalState.chess.color === "white" ? "w" : "b";
   return globalState.currentPlayer === myColor;
+}
+
+function isPromotionMove(piece, toSquare) {
+  if (!piece || piece.type !== "p" || !toSquare) return false;
+  const rank = String(toSquare)[1];
+  if (piece.color === "w") return rank === "8";
+  if (piece.color === "b") return rank === "1";
+  return false;
 }
 
 function resetSelection(board) {
@@ -106,15 +118,15 @@ function removePieceAtSquare(square) {
   }
   target.position = null;
 
-   if (pieces[square] === target) {
-     delete pieces[square];
-   } else {
-     Object.keys(pieces).forEach((key) => {
-       if (pieces[key] === target) {
-         delete pieces[key];
-       }
-     });
-   }
+  if (pieces[square] === target) {
+    delete pieces[square];
+  } else {
+    Object.keys(pieces).forEach((key) => {
+      if (pieces[key] === target) {
+        delete pieces[key];
+      }
+    });
+  }
 }
 
 export function setupClickHandler(renderer, camera, board) {
@@ -173,7 +185,7 @@ export function setupClickHandler(renderer, camera, board) {
     }
 
     const highlight = new THREE.Mesh(geometry, material);
-    highlight.position.set(x, 0.11, z);
+    highlight.position.set(x, 0.13, z);
     highlight.rotation.x = -Math.PI / 2;
     highlight.userData.type = "highlight";
     highlight.userData.square = squareNotation;
@@ -199,9 +211,26 @@ export function setupClickHandler(renderer, camera, board) {
     clearMoveHighlights(board);
 
     legalMoves.forEach((squareNotation) => {
-      const isCapture = Object.values(pieces).some(
-        (p) => p.position === squareNotation
+      let isCapture = Object.values(pieces).some(
+        (p) => p.position === squareNotation,
       );
+
+      const sel = globalState.selectedPiece;
+      const ep = globalState.chess?.enPassantTarget;
+      if (
+        !isCapture &&
+        sel &&
+        sel.type === "p" &&
+        isMultiplayerActive() &&
+        ep &&
+        squareNotation === ep
+      ) {
+        const fromFile = sel.position?.[0];
+        const epFile = ep?.[0];
+        if (fromFile && epFile && fromFile !== epFile) {
+          isCapture = true;
+        }
+      }
       const highlight = createMoveHighlight(squareNotation, isCapture);
       board.add(highlight);
       moveHighlights.push(highlight);
@@ -220,6 +249,7 @@ export function setupClickHandler(renderer, camera, board) {
     }
 
     const legalMoves = getLegalMovesWithCheckValidation(piece.position, piece);
+
     showMoveHighlights(legalMoves, board);
     console.log(`Selected ${piece.color}${piece.type} at ${piece.position}`);
     console.log("Legal moves:", legalMoves);
@@ -227,7 +257,7 @@ export function setupClickHandler(renderer, camera, board) {
 
   function movePiece(piece, newPosition) {
     const capturedPiece = Object.values(pieces).find(
-      (p) => p.position === newPosition
+      (p) => p.position === newPosition,
     );
     if (capturedPiece) {
       removePieceAtSquare(newPosition);
@@ -236,7 +266,7 @@ export function setupClickHandler(renderer, camera, board) {
       if (mode !== "classic") {
         globalState.capturedPiece = capturedPiece;
         console.log(
-          `⚔️ CLASH! ${piece.color}${piece.type} vs ${capturedPiece.color}${capturedPiece.type}`
+          `⚔️ CLASH! ${piece.color}${piece.type} vs ${capturedPiece.color}${capturedPiece.type}`,
         );
         InitClash();
       }
@@ -267,7 +297,11 @@ export function setupClickHandler(renderer, camera, board) {
     if (globalState.chess) {
       globalState.chess.status = game.status || globalState.chess.status;
       globalState.chess.enPassantTarget = game?.enPassantTarget || null;
-      globalState.chess.castling = game?.castling || globalState.chess.castling || null;
+      globalState.chess.castling =
+        game?.castling || globalState.chess.castling || null;
+      if (game.clock) {
+        globalState.chess.clock = game.clock;
+      }
       if (game.board) {
         globalState.chess.board = game.board;
       }
@@ -277,11 +311,19 @@ export function setupClickHandler(renderer, camera, board) {
 
     function showGameEndAlertIfNeeded() {
       const status = game.status;
-      if (status !== "checkmate" && status !== "stalemate" && status !== "draw") return;
+      if (
+        status !== "checkmate" &&
+        status !== "stalemate" &&
+        status !== "draw" &&
+        status !== "timeout"
+      )
+        return;
       const gid = game._id || globalState.chess?.gameId;
       if (!gid || gameEndAlertShownForGameId === gid) return;
       gameEndAlertShownForGameId = gid;
       showGameOverModal(game);
+
+      window.dispatchEvent(new CustomEvent("gameEnded"));
     }
     showGameEndAlertIfNeeded();
 
@@ -294,11 +336,9 @@ export function setupClickHandler(renderer, camera, board) {
 
       if (
         selectedPiece &&
-        (
-          !selectedPiece.position ||
+        (!selectedPiece.position ||
           !pieces[selectedPiece.position] ||
-          pieces[selectedPiece.position] !== selectedPiece
-        )
+          pieces[selectedPiece.position] !== selectedPiece)
       ) {
         resetSelection(boardRef);
       }
@@ -321,14 +361,14 @@ export function setupClickHandler(renderer, camera, board) {
     if (!pieceToMove) {
       console.warn(
         "No local piece found for server move, desync, ignoring",
-        lastMove
+        lastMove,
       );
       updateCheckHighlights(boardRef);
       return;
     }
 
     const targetAtTo = Object.values(pieces).find(
-      (p) => p && p.position === to
+      (p) => p && p.position === to,
     );
     if (targetAtTo && targetAtTo.color !== pieceToMove.color) {
       removePieceAtSquare(to);
@@ -359,9 +399,12 @@ export function setupClickHandler(renderer, camera, board) {
   function attachChessSocketHandlers() {
     if (chessHandlersAttached) return;
 
-    socket.on("chess:state", ({ game, lastMove, fullSync }) => {
+    socket.on("chess:state", ({ game, lastMove, fullSync, clock }) => {
       isMovePending = false;
       pendingMove = null;
+      if (clock && globalState.chess) {
+        globalState.chess.clock = clock;
+      }
       applyServerMove(game, lastMove, fullSync);
     });
 
@@ -378,13 +421,13 @@ export function setupClickHandler(renderer, camera, board) {
 
   attachChessSocketHandlers();
 
-  document.addEventListener("click", (event) => {
+  document.addEventListener("click", async (event) => {
     const board = globalState.board;
     if (!board) return;
 
     mouse.set(
       (event.clientX / window.innerWidth) * 2 - 1,
-      -(event.clientY / window.innerHeight) * 2 + 1
+      -(event.clientY / window.innerHeight) * 2 + 1,
     );
     raycaster.setFromCamera(mouse, camera);
 
@@ -401,7 +444,7 @@ export function setupClickHandler(renderer, camera, board) {
 
         const legalMoves = getLegalMovesWithCheckValidation(
           selectedPiece.position,
-          selectedPiece
+          selectedPiece,
         );
 
         const possibleMoves = new Set(legalMoves);
@@ -418,9 +461,7 @@ export function setupClickHandler(renderer, camera, board) {
         }
 
         if (!possibleMoves.has(squareNotation)) {
-          if (!isMultiplayerActive()) {
-            return;
-          }
+          return;
         }
 
         if (isMultiplayerActive()) {
@@ -432,13 +473,25 @@ export function setupClickHandler(renderer, camera, board) {
 
           const from = selectedPiece.position;
           const to = squareNotation;
-          socket.emit("chess:move", {
-            lobbyId: globalState.chess.lobbyId,
-            gameId: globalState.chess.gameId,
-            userId: globalState.chess.userId,
-            from,
-            to,
-          });
+          if (isPromotionMove(selectedPiece, to) && possibleMoves.has(to)) {
+            const promotion = await showPromotionModal();
+            socket.emit("chess:move", {
+              lobbyId: globalState.chess.lobbyId,
+              gameId: globalState.chess.gameId,
+              userId: globalState.chess.userId,
+              from,
+              to,
+              promotion,
+            });
+          } else {
+            socket.emit("chess:move", {
+              lobbyId: globalState.chess.lobbyId,
+              gameId: globalState.chess.gameId,
+              userId: globalState.chess.userId,
+              from,
+              to,
+            });
+          }
           isMovePending = true;
           pendingMove = { from, to, piece: selectedPiece };
           resetSelection(board);
@@ -522,7 +575,7 @@ export function setupClickHandler(renderer, camera, board) {
           const pieceAtSquare =
             pieces[squareNotation] ||
             Object.values(pieces).find(
-              (p) => p && p.position === squareNotation
+              (p) => p && p.position === squareNotation,
             );
 
           if (pieceAtSquare) {
@@ -536,7 +589,7 @@ export function setupClickHandler(renderer, camera, board) {
       if (selectedPiece && squareNotation) {
         const legalMoves = getLegalMovesWithCheckValidation(
           selectedPiece.position,
-          selectedPiece
+          selectedPiece,
         );
 
         const possibleMoves = new Set(legalMoves);
@@ -552,20 +605,18 @@ export function setupClickHandler(renderer, camera, board) {
           const epFile = ep[0];
           const epRank = parseInt(ep[1], 10);
 
-          const fileDiff = Math.abs(epFile.charCodeAt(0) - fromFile.charCodeAt(0));
+          const fileDiff = Math.abs(
+            epFile.charCodeAt(0) - fromFile.charCodeAt(0),
+          );
           const rankDiff =
-            selectedPiece.color === "w"
-              ? epRank - fromRank
-              : fromRank - epRank;
+            selectedPiece.color === "w" ? epRank - fromRank : fromRank - epRank;
 
           if (fileDiff === 1 && rankDiff === 1) {
             possibleMoves.add(ep);
           }
         }
 
-        const canTryMove = isMultiplayerActive()
-          ? true
-          : possibleMoves.has(squareNotation);
+        const canTryMove = possibleMoves.has(squareNotation);
 
         if (canTryMove) {
           if (isMultiplayerActive()) {
@@ -577,13 +628,25 @@ export function setupClickHandler(renderer, camera, board) {
 
             const from = selectedPiece.position;
             const to = squareNotation;
-            socket.emit("chess:move", {
-              lobbyId: globalState.chess.lobbyId,
-              gameId: globalState.chess.gameId,
-              userId: globalState.chess.userId,
-              from,
-              to,
-            });
+            if (isPromotionMove(selectedPiece, to) && possibleMoves.has(to)) {
+              const promotion = await showPromotionModal();
+              socket.emit("chess:move", {
+                lobbyId: globalState.chess.lobbyId,
+                gameId: globalState.chess.gameId,
+                userId: globalState.chess.userId,
+                from,
+                to,
+                promotion,
+              });
+            } else {
+              socket.emit("chess:move", {
+                lobbyId: globalState.chess.lobbyId,
+                gameId: globalState.chess.gameId,
+                userId: globalState.chess.userId,
+                from,
+                to,
+              });
+            }
             isMovePending = true;
             pendingMove = { from, to, piece: selectedPiece };
             resetSelection(board);
@@ -631,7 +694,6 @@ export function ChashFlickerScene(scene) {
       objectsChanged++;
     }
   });
-
 }
 
 export function animateMoveHighlights() {

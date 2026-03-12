@@ -1,18 +1,11 @@
 import socket from "./index.js";
 import { showLobbyUI } from "../ui/showLobby";
 import { fetchWithAuth } from "../utils/fetchWithAuth.js";
+import { globalState } from "../config/globalState.js";
 
 function collectLobbySettings() {
-  const modeBtn = document.querySelector(".type.selected");
   const themeBtn = document.querySelector(".theme.selected");
-  const minigameBtns = document.querySelectorAll(
-    ".create-minigames .create-btn.selected"
-  );
-
-  let mode = "custom";
-  if (modeBtn?.classList.contains("type-classic")) {
-    mode = "classic";
-  }
+  const timeBtn = document.querySelector(".time.selected");
 
   let theme = "classic";
   if (themeBtn?.classList.contains("theme-cyberpunk")) {
@@ -21,11 +14,12 @@ function collectLobbySettings() {
     theme = "fantasy";
   }
 
-  const minigames = Array.from(minigameBtns)
-    .map((btn) => btn.dataset.minigame)
-    .filter(Boolean);
+  let minutes = 5;
+  const raw = timeBtn?.dataset?.minutes;
+  const parsed = raw ? Number(raw) : NaN;
+  if (Number.isFinite(parsed) && parsed > 0) minutes = parsed;
 
-  return { mode, theme, minigames };
+  return { theme, timeMinutes: minutes };
 }
 
 export async function LobbyCreate() {
@@ -38,6 +32,7 @@ export async function LobbyCreate() {
     const { user } = await userRes.json();
 
     const settings = collectLobbySettings();
+    const pieceColor = document.querySelector(".piece-color-input")?.value || null;
 
     const res = await fetchWithAuth("/api/lobby/create", {
       method: "POST",
@@ -45,6 +40,7 @@ export async function LobbyCreate() {
       body: JSON.stringify({
         userId: user._id || user.id,
         settings,
+        pieceColor,
       }),
     });
 
@@ -83,8 +79,9 @@ export async function LobbyCreate() {
     if (!socket._lobbyListenersAdded) {
       socket._lobbyListenersAdded = true;
 
-      socket.on("lobby:update", ({ lobbyId, users, settings: lobbySettings }) => {
+      const onLobbyUpdate = ({ lobbyId, users, settings: lobbySettings }) => {
         const list = users || [];
+        globalState.lobbyUsers = list;
         const host = list[0]
           ? {
               ...list[0],
@@ -105,11 +102,11 @@ export async function LobbyCreate() {
           players: list,
           settings: lobbySettings || data.settings || settings,
         });
-      });
+      };
 
-      socket.on("lobby:error", ({ message }) =>
-        alert(message || "Lobby error")
-      );
+      socket._lobbyUpdateHandler = onLobbyUpdate;
+      socket.on("lobby:update", onLobbyUpdate);
+      socket.on("lobby:error", ({ message }) => alert(message || "Lobby error"));
     }
   });
 }

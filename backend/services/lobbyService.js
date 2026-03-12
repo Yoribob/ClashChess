@@ -2,7 +2,7 @@ const { getDb } = require("../config/db");
 const { generateCode } = require("../utils/generateCode");
 const { ObjectId } = require("mongodb");
 
-async function createLobby(userId, settings) {
+async function createLobby(userId, settings, pieceColor = null) {
   const db = getDb();
   const users = db.collection("users");
 
@@ -19,6 +19,7 @@ async function createLobby(userId, settings) {
       usernameOriginal: user.usernameOriginal ?? user.username,
       avatar: user.avatar || null,
       ready: false,
+      pieceColor: pieceColor || null,
     },
   ];
 
@@ -26,14 +27,14 @@ async function createLobby(userId, settings) {
     ? {
         mode: settings.mode || "classic",
         theme: settings.theme || "classic",
-        minigames: Array.isArray(settings.minigames)
-          ? settings.minigames
-          : [],
+        timeMinutes: Number.isFinite(Number(settings.timeMinutes))
+          ? Number(settings.timeMinutes)
+          : 5,
       }
     : {
         mode: "classic",
         theme: "classic",
-        minigames: [],
+      timeMinutes: 5,
       };
 
   await lobbies.insertOne({
@@ -51,7 +52,7 @@ async function createLobby(userId, settings) {
   };
 }
 
-async function joinLobby(lobbyId, userId) {
+async function joinLobby(lobbyId, userId, pieceColor = null) {
   const db = getDb();
   const users = db.collection("users");
 
@@ -80,6 +81,7 @@ async function joinLobby(lobbyId, userId) {
           usernameOriginal: user.usernameOriginal ?? user.username,
           avatar: user.avatar || null,
           ready: false,
+          pieceColor: pieceColor || null,
         },
       },
     }

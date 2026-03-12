@@ -1,10 +1,6 @@
 const { getDb } = require("../config/db");
 const { ObjectId } = require("mongodb");
-const {
-  createGame,
-  applyMove,
-  validateMove,
-} = require("../game/chessEngine");
+const { createGame, applyMove, validateMove } = require("../game/chessEngine");
 
 function getGamesCollection() {
   const db = getDb();
@@ -21,11 +17,11 @@ async function updateWinLossStats(winnerId, loserId) {
   await Promise.all([
     users.updateOne(
       { _id: new ObjectId(winnerId) },
-      { $inc: { gamesWon: 1, gamesPlayed: 1 } }
+      { $inc: { gamesWon: 1, gamesPlayed: 1 } },
     ),
     users.updateOne(
       { _id: new ObjectId(loserId) },
-      { $inc: { gamesLost: 1, gamesPlayed: 1 } }
+      { $inc: { gamesLost: 1, gamesPlayed: 1 } },
     ),
   ]);
 }
@@ -53,10 +49,7 @@ async function findGameById(gameId) {
 
 async function updateGameById(gameId, update) {
   const games = getGamesCollection();
-  await games.updateOne(
-    { _id: new ObjectId(gameId) },
-    { $set: update }
-  );
+  await games.updateOne({ _id: new ObjectId(gameId) }, { $set: update });
   const updated = await games.findOne({ _id: new ObjectId(gameId) });
   return mapGameDoc(updated);
 }
@@ -149,7 +142,10 @@ async function makeMove(gameId, move) {
     return { ok: false, reason: validation.reason, game: gameDoc };
   }
 
-  const nextState = applyMove(engineState, move);
+  const promo =
+    move && move.promotion ? String(move.promotion).toLowerCase() : "q";
+  const promotion = ["q", "r", "b", "n"].includes(promo) ? promo : "q";
+  const nextState = applyMove(engineState, move, promotion);
   const updatedDoc = docFromEngineState(gameDoc, nextState);
 
   const saved = await updateGameById(gameId, {
@@ -162,14 +158,15 @@ async function makeMove(gameId, move) {
   });
 
   if (saved.status === "checkmate") {
-    const loserId = saved.turn === "white" ? gameDoc.players.white : gameDoc.players.black;
-    const winnerId = saved.turn === "white" ? gameDoc.players.black : gameDoc.players.white;
+    const loserId =
+      saved.turn === "white" ? gameDoc.players.white : gameDoc.players.black;
+    const winnerId =
+      saved.turn === "white" ? gameDoc.players.black : gameDoc.players.white;
     await updateWinLossStats(winnerId, loserId);
   }
 
   return { ok: true, game: saved, move };
 }
-
 
 async function endGameAsCheckmate(gameId, loserColor) {
   const gameDoc = await findGameById(gameId);
@@ -190,10 +187,29 @@ async function endGameAsCheckmate(gameId, loserColor) {
   return updated;
 }
 
+async function endGameAsTimeout(gameId, loserColor) {
+  const gameDoc = await findGameById(gameId);
+  if (!gameDoc) throw new Error("Game not found");
+  if (gameDoc.status !== "active") return gameDoc;
+
+  const updated = await updateGameById(gameId, {
+    status: "timeout",
+    turn: loserColor,
+  });
+
+  const winnerId =
+    loserColor === "white" ? gameDoc.players.black : gameDoc.players.white;
+  const loserId =
+    loserColor === "white" ? gameDoc.players.white : gameDoc.players.black;
+  await updateWinLossStats(winnerId, loserId);
+
+  return updated;
+}
+
 module.exports = {
   createChessGame,
   getChessGame,
   makeMove,
   endGameAsCheckmate,
+  endGameAsTimeout,
 };
-

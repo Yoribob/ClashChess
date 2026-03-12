@@ -9,6 +9,7 @@ import {
 } from "../game/boardEngine.js";
 import { syncBoardFromBackend } from "../game/gameState.js";
 import { showGameOverModal } from "./gameOverModal.js";
+import { showPromotionModal } from "./promotionModal.js";
 
 const FILES = "abcdefgh";
 
@@ -111,7 +112,8 @@ function renderBoardIntoElement(board, el, cellFontSize, interactive = false) {
       const code = board ? board[square] : null;
 
       const cell = document.createElement("div");
-      const isDark = (col + (orientation === "black" ? row + 1 : 8 - row)) % 2 === 1;
+      const isDark =
+        (col + (orientation === "black" ? row + 1 : 8 - row)) % 2 === 1;
       cell.style.background = isDark ? "#8b4513" : "#f0d9b5";
       cell.style.display = "flex";
       cell.style.alignItems = "center";
@@ -189,6 +191,36 @@ export function setViewMode(mode) {
   applyViewMode(mode);
 }
 
+export function destroyMiniBoardUI() {
+  try {
+    applyViewMode("3d");
+  } catch {}
+
+  const container = document.querySelector(".mini-board-container");
+  if (container && container.parentNode) {
+    container.parentNode.removeChild(container);
+  }
+
+  const overlay = document.querySelector(".full-2d-board-overlay");
+  if (overlay && overlay.parentNode) {
+    overlay.parentNode.removeChild(overlay);
+  }
+
+  const marker = document.querySelector(".mini-board-socket-hooks");
+  if (marker && marker.parentNode) {
+    marker.parentNode.removeChild(marker);
+  }
+
+  if (active2DAnimation && active2DAnimation.parentNode) {
+    active2DAnimation.parentNode.removeChild(active2DAnimation);
+  }
+  active2DAnimation = null;
+  selectedSquare2d = null;
+  isMovePending2d = false;
+  legalMoves2d = new Set();
+  captureMoves2d = new Set();
+}
+
 function play2DMoveAnimation(from, to, board) {
   try {
     const fullGrid = document.querySelector(".full-2d-board-grid");
@@ -231,7 +263,8 @@ function play2DMoveAnimation(from, to, board) {
       overlay.style.color = "#111111";
       overlay.style.textShadow = "0 0 3px rgba(0,0,0,0.8)";
     }
-    overlay.style.transition = "transform 0.18s ease-out, opacity 0.18s ease-out";
+    overlay.style.transition =
+      "transform 0.18s ease-out, opacity 0.18s ease-out";
 
     const dx = rectTo.left - rectFrom.left;
     const dy = rectTo.top - rectFrom.top;
@@ -257,11 +290,9 @@ function play2DMoveAnimation(from, to, board) {
           active2DAnimation = null;
         }
       },
-      { once: true }
+      { once: true },
     );
-  } catch {
-    
-  }
+  } catch {}
 }
 
 export function initMiniBoardUI() {
@@ -348,8 +379,11 @@ export function initMiniBoardUI() {
     fullGrid.addEventListener("click", (e) => {
       let target = e.target;
       if (!target || !(target instanceof HTMLElement)) return;
-      
-      while (target && !(target instanceof HTMLElement && target.dataset.square)) {
+
+      while (
+        target &&
+        !(target instanceof HTMLElement && target.dataset.square)
+      ) {
         target = target.parentElement;
       }
       if (!target) return;
@@ -381,12 +415,15 @@ export function initMiniBoardUI() {
           turn,
           castling,
           enPassantTarget,
-          false
+          false,
         );
         legal.forEach((toSq) => {
           legalMoves2d.add(toSq);
           const targetPiece = board[toSq];
-          if ((targetPiece && getPieceColor(targetPiece) !== myColor) || toSq === enPassantTarget) {
+          if (
+            (targetPiece && getPieceColor(targetPiece) !== myColor) ||
+            toSq === enPassantTarget
+          ) {
             captureMoves2d.add(toSq);
           }
         });
@@ -410,14 +447,35 @@ export function initMiniBoardUI() {
       }
 
       if (isMultiplayerActive()) {
+        const moving = board[from] || null;
+        const isPawn = moving && String(moving[1] || "").toLowerCase() === "p";
+        const promoteRank = to[1];
+        const needsPromotion =
+          isPawn &&
+          ((myColor === "w" && promoteRank === "8") ||
+            (myColor === "b" && promoteRank === "1"));
+
         play2DMoveAnimation(from, to, board);
-        socket.emit("chess:move", {
-          lobbyId: globalState.chess.lobbyId,
-          gameId: globalState.chess.gameId,
-          userId: globalState.chess.userId,
-          from,
-          to,
-        });
+        if (needsPromotion) {
+          showPromotionModal().then((promotion) => {
+            socket.emit("chess:move", {
+              lobbyId: globalState.chess.lobbyId,
+              gameId: globalState.chess.gameId,
+              userId: globalState.chess.userId,
+              from,
+              to,
+              promotion,
+            });
+          });
+        } else {
+          socket.emit("chess:move", {
+            lobbyId: globalState.chess.lobbyId,
+            gameId: globalState.chess.gameId,
+            userId: globalState.chess.userId,
+            from,
+            to,
+          });
+        }
         isMovePending2d = true;
       } else {
         const castling = normalizeCastlingRights(globalState.chess?.castling);
@@ -425,13 +483,13 @@ export function initMiniBoardUI() {
         const turn = globalState.currentPlayer || myColor;
         const v = validateMove(
           { board, turn, status: "active", castling, enPassantTarget },
-          { from, to }
+          { from, to },
         );
         if (!v.ok) return;
         play2DMoveAnimation(from, to, board);
         const next = applyMove(
           { board, turn, status: "active", castling, enPassantTarget },
-          { from, to }
+          { from, to },
         );
         globalState.chess.board = next.board;
         globalState.chess.enPassantTarget = next.enPassantTarget;
@@ -443,7 +501,11 @@ export function initMiniBoardUI() {
           syncBoardFromBackend(next.board, globalState.scene);
         }
         if (next.status && next.status !== "active") {
-          showGameOverModal({ ...globalState.chess, turn: next.turn === "w" ? "white" : "black", status: next.status });
+          showGameOverModal({
+            ...globalState.chess,
+            turn: next.turn === "w" ? "white" : "black",
+            status: next.status,
+          });
         }
       }
 
@@ -476,7 +538,7 @@ export function initMiniBoardUI() {
 
     socket.on("chess:state", ({ game, lastMove }) => {
       isMovePending2d = false;
-      
+
       const shouldClearSelection =
         (lastMove && lastMove.from && lastMove.to) ||
         (game && game.status && game.status !== "active");
@@ -504,4 +566,3 @@ export function updateMiniAndFullBoard(board) {
   if (miniGrid) renderBoardIntoElement(board, miniGrid, 12, false);
   if (fullGrid) renderBoardIntoElement(board, fullGrid, 26, true);
 }
-

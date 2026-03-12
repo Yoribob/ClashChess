@@ -14,18 +14,6 @@ export function handleCreateMenu(menu) {
       </header>
 
       <div class="create-section">
-        <h2 class="title create-subtitle" data-section="mode">MATCH MODE</h2>
-        <div class="create-type flex-row">
-          <div class="type type-classic create-btn menu-btn">
-            <span class="label">CLASSIC</span>
-          </div>
-          <div class="type type-custom create-btn menu-btn">
-            <span class="label">CUSTOM</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="create-section">
         <h2 class="title create-subtitle" data-section="theme">THEME</h2>
         <div class="create-theme flex-row">
           <div class="theme theme-classic menu-btn create-btn">
@@ -40,15 +28,32 @@ export function handleCreateMenu(menu) {
         </div>
       </div>
 
-      <div class="create-section create-section-minigames">
-        <h2 class="title create-subtitle" data-section="minigames">MINIGAMES</h2>
-        <div class="create-minigames">
-          <div class="menu-btn create-btn" data-minigame="math"><span class="label">MATH</span></div>
-          <div class="menu-btn create-btn" data-minigame="qte"><span class="label">QTE</span></div>
-          <div class="menu-btn create-btn" data-minigame="quiz"><span class="label">QUIZ</span></div>
-          <div class="menu-btn create-btn" data-minigame="placeh1"><span class="label">PLACEH1</span></div>
-          <div class="menu-btn create-btn" data-minigame="placeh2"><span class="label">PLACEH2</span></div>
-          <div class="menu-btn create-btn" data-minigame="placeh3"><span class="label">PLACEH3</span></div>
+      <div class="create-section">
+        <h2 class="title create-subtitle" data-section="timer">TIME CONTROL</h2>
+        <div class="create-type flex-row">
+          <div class="time time-10 create-btn menu-btn" data-minutes="10">
+            <span class="label">10 MIN</span>
+          </div>
+          <div class="time time-15 create-btn menu-btn" data-minutes="15">
+            <span class="label">15 MIN</span>
+          </div>
+          <div class="time time-30 create-btn menu-btn" data-minutes="30">
+            <span class="label">30 MIN</span>
+          </div>
+          <div class="time time-60 create-btn menu-btn" data-minutes="60">
+            <span class="label">60 MIN</span>
+          </div>
+          <div class="time time-90 create-btn menu-btn" data-minutes="90">
+            <span class="label">90 MIN</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="create-section">
+        <h2 class="title create-subtitle" data-section="pieceColor">YOUR PIECE COLOR</h2>
+        <div class="create-type flex-row create-color-row">
+          <input class="piece-color-input" type="color" value="#f0d9b5" />
+          <input class="piece-color-hex" type="text" value="#f0d9b5" maxlength="7" />
         </div>
       </div>
 
@@ -65,50 +70,16 @@ export function handleCreateMenu(menu) {
   const closeBtn = menu.querySelector(".menu-close-btn");
   closeBtn?.addEventListener("click", () => showMainMenu(true));
 
-  menu.querySelector(".type-classic")?.classList.add("selected");
+  menu.querySelector(".time-90")?.classList.add("selected");
   menu.querySelector(".theme-classic")?.classList.add("selected");
 
-  const modeBtns = menu.querySelectorAll(".type");
+  const timeBtns = menu.querySelectorAll(".time");
   const themeBtns = menu.querySelectorAll(".theme");
-  const minigameBtns = menu.querySelectorAll(".create-minigames .create-btn");
-  const minigamesSection = menu.querySelector(".create-section-minigames");
-  const minigamesSubtitle = menu.querySelector('[data-section="minigames"]');
 
-  let switchTl = null;
-
-  modeBtns.forEach((btn) => {
+  timeBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
-      const isClassic = btn.classList.contains("type-classic");
-
-      modeBtns.forEach((b) => b.classList.remove("selected"));
+      timeBtns.forEach((b) => b.classList.remove("selected"));
       btn.classList.add("selected");
-
-      minigamesSection?.classList.toggle("disabled", isClassic);
-      minigameBtns.forEach((b) => {
-        b.classList.remove("selected");
-        b.style.pointerEvents = isClassic ? "none" : "";
-        b.style.opacity = isClassic ? "0.5" : "";
-      });
-
-      minigamesSubtitle?.classList.add("no-anim");
-
-      if (switchTl) switchTl.kill();
-      switchTl = gsap.timeline({ defaults: { ease: "power2.out", overwrite: "auto" } });
-
-      if (isClassic) {
-        minigamesSection?.classList.remove("slide-over");
-        minigamesSection?.classList.add("slide-under");
-        minigamesSubtitle?.classList.remove("pulse");
-        switchTl.to(minigamesSubtitle, { opacity: 0.5, y: 5, duration: 0.45 }, 0);
-        switchTl.to(minigamesSection, { y: 15, scale: 0.92, opacity: 0.6, duration: 0.45 }, 0);
-      } else {
-        minigamesSection?.classList.remove("slide-under");
-        minigamesSection?.classList.add("slide-over");
-        minigamesSubtitle?.classList.add("pulse");
-        switchTl.to(minigamesSubtitle, { opacity: 1, y: 0, duration: 0.45 }, 0);
-        switchTl.to(minigamesSection, { y: 0, scale: 1, opacity: 1, duration: 0.45 }, 0);
-      }
-
     });
   });
 
@@ -119,12 +90,23 @@ export function handleCreateMenu(menu) {
     });
   });
 
-  minigameBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (menu.querySelector(".type-classic.selected")) return;
-      btn.classList.toggle("selected");
+  const colorInput = menu.querySelector(".piece-color-input");
+  const hexInput = menu.querySelector(".piece-color-hex");
+  const normalizeHex = (v) => {
+    if (!v) return null;
+    const s = String(v).trim();
+    const withHash = s.startsWith("#") ? s : `#${s}`;
+    return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toUpperCase() : null;
+  };
+  if (colorInput && hexInput) {
+    colorInput.addEventListener("input", () => {
+      hexInput.value = String(colorInput.value || "#F0D9B5").toUpperCase();
     });
-  });
+    hexInput.addEventListener("input", () => {
+      const n = normalizeHex(hexInput.value);
+      if (n) colorInput.value = n;
+    });
+  }
 
   LobbyCreate();
 }

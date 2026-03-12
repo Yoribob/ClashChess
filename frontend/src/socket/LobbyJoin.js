@@ -1,6 +1,7 @@
 import socket from "./index.js";
 import { showLobbyUI } from "../ui/showLobby";
 import { fetchWithAuth } from "../utils/fetchWithAuth.js";
+import { globalState } from "../config/globalState.js";
 
 export async function joinLobby() {
   const joinBtn = document.querySelector(".join-submit-btn");
@@ -25,6 +26,7 @@ export async function joinLobby() {
           userId: user._id,
           username: user.username,
           lobbyID: lobbyCode,
+          pieceColor: document.querySelector(".piece-color-input")?.value || null,
         }),
       });
 
@@ -82,6 +84,7 @@ export async function joinLobby() {
 
         const onLobbyUpdate = ({ lobbyId, users, settings: lobbySettings }) => {
           const list = users || [];
+          globalState.lobbyUsers = list;
           const host = list[0]
             ? {
                 ...list[0],

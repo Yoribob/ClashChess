@@ -27,11 +27,37 @@ export function handleJoinMenu(menu) {
           </button>
         </div>
       </div>
+
+      <div class="join-input-section" style="margin-top:14px;">
+        <span class="join-code-label" style="margin: 0 0 10px;">YOUR PIECE COLOR</span>
+        <div class="join-input-wrapper join-color-row">
+          <input class="piece-color-input" type="color" value="#8A8A8A" />
+          <input class="piece-color-hex" type="text" value="#8A8A8A" maxlength="7" />
+        </div>
+      </div>
     </div>
   `;
 
   BtnPressAnim();
   joinLobby();
+
+  const colorInput = menu.querySelector(".piece-color-input");
+  const hexInput = menu.querySelector(".piece-color-hex");
+  const normalizeHex = (v) => {
+    if (!v) return null;
+    const s = String(v).trim();
+    const withHash = s.startsWith("#") ? s : `#${s}`;
+    return /^#[0-9a-fA-F]{6}$/.test(withHash) ? withHash.toUpperCase() : null;
+  };
+  if (colorInput && hexInput) {
+    colorInput.addEventListener("input", () => {
+      hexInput.value = String(colorInput.value || "#8A8A8A").toUpperCase();
+    });
+    hexInput.addEventListener("input", () => {
+      const n = normalizeHex(hexInput.value);
+      if (n) colorInput.value = n;
+    });
+  }
 
   const closeBtn = menu.querySelector(".menu-close-btn");
   closeBtn?.addEventListener("click", () => {

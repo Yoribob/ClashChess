@@ -40,6 +40,7 @@ export function showGameOverModal(game) {
   const lobbyId = globalState.chess?.lobbyId || null;
   const userId = globalState.chess?.userId || null;
   currentLobbyIdForModal = lobbyId;
+
   const overlay = document.createElement("div");
   overlay.className = "game-over-overlay";
   overlay.style.position = "fixed";
@@ -78,10 +79,12 @@ export function showGameOverModal(game) {
     status === "checkmate"
       ? "Checkmate"
       : status === "stalemate"
-      ? "Stalemate"
-      : status === "draw"
-      ? "Draw"
-      : "Game Over";
+        ? "Stalemate"
+        : status === "draw"
+          ? "Draw"
+          : status === "timeout"
+            ? "Time"
+            : "Game Over";
 
   const playerColor = globalState.chess?.color;
   let resultText = "Game finished.";
@@ -95,15 +98,14 @@ export function showGameOverModal(game) {
         parsed.usernameOriginal && String(parsed.usernameOriginal).trim().length
           ? String(parsed.usernameOriginal).trim()
           : parsed.username && String(parsed.username).trim().length
-          ? String(parsed.username).trim()
-          : null;
+            ? String(parsed.username).trim()
+            : null;
       if (rawName) {
         currentUsername =
           rawName.length > 16 ? `${rawName.slice(0, 16)}...` : rawName;
       }
     }
-  } catch {
-  }
+  } catch {}
 
   let winnerName = null;
 
@@ -112,6 +114,21 @@ export function showGameOverModal(game) {
     const winnerColor = loserColor === "white" ? "black" : "white";
     const winnerIsPlayer = playerColor === winnerColor;
 
+    const winnerIdFromGame = game?.players?.[winnerColor] ?? null;
+    const lobbyUsers = globalState.lobbyUsers || [];
+    if (winnerIdFromGame && Array.isArray(lobbyUsers)) {
+      const wid = String(winnerIdFromGame);
+      const match = lobbyUsers.find(
+        (u) => String(u?.userId ?? u?._id ?? "") === wid,
+      );
+      const rawLobbyName = match?.usernameOriginal ?? match?.username ?? null;
+      if (rawLobbyName && String(rawLobbyName).trim().length) {
+        const cleaned = String(rawLobbyName).trim();
+        winnerName =
+          cleaned.length > 16 ? `${cleaned.slice(0, 16)}...` : cleaned;
+      }
+    }
+
     const rawWinnerName =
       game.winnerUsernameOriginal ||
       game.winnerUsername ||
@@ -119,17 +136,35 @@ export function showGameOverModal(game) {
       null;
     if (rawWinnerName && String(rawWinnerName).trim().length) {
       const cleaned = String(rawWinnerName).trim();
-      winnerName =
-        cleaned.length > 16 ? `${cleaned.slice(0, 16)}...` : cleaned;
+      winnerName = cleaned.length > 16 ? `${cleaned.slice(0, 16)}...` : cleaned;
     }
 
     if (!winnerName && winnerIsPlayer && currentUsername) {
       winnerName = currentUsername;
     }
 
-    if (winnerName) {
-      resultText = `${winnerName} wins by checkmate.`;
+    if (!winnerName) winnerName = "Player";
+    resultText = `${winnerName} wins by checkmate.`;
+  } else if (status === "timeout") {
+    const loserColor = game.turn;
+    const winnerColor = loserColor === "white" ? "black" : "white";
+    const winnerIdFromGame = game?.players?.[winnerColor] ?? null;
+    const lobbyUsers = globalState.lobbyUsers || [];
+    if (winnerIdFromGame && Array.isArray(lobbyUsers)) {
+      const wid = String(winnerIdFromGame);
+      const match = lobbyUsers.find(
+        (u) => String(u?.userId ?? u?._id ?? "") === wid,
+      );
+      const rawLobbyName = match?.usernameOriginal ?? match?.username ?? null;
+      if (rawLobbyName && String(rawLobbyName).trim().length) {
+        const cleaned = String(rawLobbyName).trim();
+        winnerName =
+          cleaned.length > 16 ? `${cleaned.slice(0, 16)}...` : cleaned;
+      }
     }
+    if (!winnerName && currentUsername) winnerName = currentUsername;
+    if (!winnerName) winnerName = "Player";
+    resultText = `${winnerName} wins on time.`;
   } else if (status === "stalemate" || status === "draw") {
     resultText =
       status === "stalemate"
@@ -193,6 +228,11 @@ export function showGameOverModal(game) {
     if (lobbyId && userId) {
       socket.emit("lobby:leave", { lobbyId, userId });
     }
+    if (socket._lobbyUpdateHandler) {
+      socket.off("lobby:update", socket._lobbyUpdateHandler);
+      socket._lobbyUpdateHandler = null;
+    }
+    socket._lobbyListenersAdded = false;
     manuallyLeftLobby = true;
     closeGameOverModal();
     window.dispatchEvent(new CustomEvent("leaveGame"));
@@ -215,13 +255,20 @@ export function showGameOverModal(game) {
   if (!listenersAttached) {
     listenersAttached = true;
 
-    socket.on("chess:restartUpdate", ({ lobbyId: payloadLobbyId, totalPlayers, readyPlayers }) => {
-      if (!currentModal || !currentRetryLabelSpan) return;
-      if (!currentLobbyIdForModal || payloadLobbyId !== currentLobbyIdForModal) return;
-      const total = totalPlayers || 0;
-      const ready = readyPlayers || 0;
-      currentRetryLabelSpan.textContent = `Retry (${ready}/${total || 2})`;
-    });
+    socket.on(
+      "chess:restartUpdate",
+      ({ lobbyId: payloadLobbyId, totalPlayers, readyPlayers }) => {
+        if (!currentModal || !currentRetryLabelSpan) return;
+        if (
+          !currentLobbyIdForModal ||
+          payloadLobbyId !== currentLobbyIdForModal
+        )
+          return;
+        const total = totalPlayers || 0;
+        const ready = readyPlayers || 0;
+        currentRetryLabelSpan.textContent = `Retry (${ready}/${total || 2})`;
+      },
+    );
 
     socket.on("lobby:update", ({ lobbyId: updatedLobbyId, users }) => {
       if (manuallyLeftLobby) return;
@@ -254,8 +301,16 @@ export function showGameOverModal(game) {
           const leaveLobbyId = currentLobbyIdForModal;
           const leaveUserId = globalState.chess?.userId;
           if (leaveLobbyId && leaveUserId) {
-            socket.emit("lobby:leave", { lobbyId: leaveLobbyId, userId: leaveUserId });
+            socket.emit("lobby:leave", {
+              lobbyId: leaveLobbyId,
+              userId: leaveUserId,
+            });
           }
+          if (socket._lobbyUpdateHandler) {
+            socket.off("lobby:update", socket._lobbyUpdateHandler);
+            socket._lobbyUpdateHandler = null;
+          }
+          socket._lobbyListenersAdded = false;
           closeGameOverModal();
           window.dispatchEvent(new CustomEvent("leaveGame"));
         } else {

@@ -5,7 +5,9 @@ let isRefreshing = false;
 let refreshPromise = null;
 
 export async function fetchWithAuth(url, options = {}) {
-  const fullUrl = url.startsWith("http") ? url : API_ORIGIN + (url.startsWith("/") ? url : "/" + url);
+  const fullUrl = url.startsWith("http")
+    ? url
+    : API_ORIGIN + (url.startsWith("/") ? url : "/" + url);
   const defaultOptions = {
     credentials: "include",
     ...options,
@@ -18,9 +20,7 @@ export async function fetchWithAuth(url, options = {}) {
       if (isRefreshing && refreshPromise) {
         try {
           await refreshPromise;
-        } catch (_) {
-          
-        }
+        } catch (_) {}
         response = await fetch(fullUrl, defaultOptions);
         return response;
       }

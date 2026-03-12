@@ -39,10 +39,6 @@ export function showMainMenu(isReturned = false) {
     </div>
     <div class="menu-footer">
       <span class="menu-footnote">Made with ❤️ by Yoribob</span>
-      <div class="menu-footer-actions">
-        <button class="quick-test-btn" type="button">QUICK TEST</button>
-        <button class="quick-gameover-btn" type="button">TEST GAME OVER</button>
-      </div>
     </div>
   `;
 

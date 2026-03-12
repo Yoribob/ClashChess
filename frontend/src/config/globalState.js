@@ -1,7 +1,6 @@
-
-
 export let globalState = {
   lobby_created: false,
+  lobbyUsers: null,
   scene: null,
   camera: null,
   renderer: null,
@@ -22,13 +21,7 @@ export let globalState = {
   capturedPiece_color: null,
   selectedPiece_color: null,
   viewMode: "3d",
-  chess: {
-    lobbyId: null,
-    gameId: null,
-    color: null,
-    userId: null,
-    status: "active",
-  },
+  chess: null,
   utils: {
     applyBlackToAll: null,
     resetAllToOriginal: null,
@@ -92,7 +85,7 @@ export function initializeGlobalState(
   composer,
   activeTheme,
   lights,
-  skybox
+  skybox,
 ) {
   globalState.scene = scene;
   globalState.camera = camera;

@@ -8,6 +8,7 @@ function serializePlayers(players) {
     usernameOriginal: p.usernameOriginal ?? p.username ?? null,
     ready: p.ready ?? false,
     avatar: p.avatar ?? null,
+    pieceColor: p.pieceColor ?? null,
   }));
 }
 
@@ -15,6 +16,7 @@ async function LobbyJoin(req, res) {
   try {
     const userId = req.body.userId;
     let lobbyId = req.body.lobbyId || req.body.lobbyID;
+    const pieceColor = req.body.pieceColor || null;
     if (!userId) {
       return res.status(400).json({ msg: "No userId provided" });
     }
@@ -23,7 +25,7 @@ async function LobbyJoin(req, res) {
     }
     lobbyId = String(lobbyId).trim().toUpperCase();
 
-    const players = await joinLobby(lobbyId, userId);
+    const players = await joinLobby(lobbyId, userId, pieceColor);
     const serialized = serializePlayers(players);
 
     const lobby = {

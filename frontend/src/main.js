@@ -29,9 +29,9 @@ import { InitMenuBg, UndoMenuBg } from "./graphics/menuBg.js";
 import { closeGameOverModal } from "./ui/gameOverModal.js";
 import socket from "./socket/index.js";
 import { registerChessSocketHandlers } from "./socket/chess.js";
-import { initMiniBoardUI } from "./ui/miniBoard.js";
+import { destroyMiniBoardUI, initMiniBoardUI } from "./ui/miniBoard.js";
 import { showGameOverModal } from "./ui/gameOverModal.js";
-
+import { destroyChessClockUI, initChessClockUI } from "./ui/chessClock.js";
 
 const MENU_THEME = {
   scene: { fogColor: 0x8b4513, fogDensity: 0.012 },
@@ -40,13 +40,12 @@ const MENU_THEME = {
   pieces: COLOR_SCHEME.classic.pieces,
 };
 
-
 const ACTIVE_THEME = COLOR_SCHEME.classic;
 
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(
   MENU_THEME.scene.fogColor,
-  MENU_THEME.scene.fogDensity
+  MENU_THEME.scene.fogDensity,
 );
 
 const { camera, frustumSize } = createCamera();
@@ -83,7 +82,7 @@ initializeGlobalState(
   composer,
   ACTIVE_THEME,
   lights,
-  skybox
+  skybox,
 );
 
 registerChessSocketHandlers();
@@ -105,11 +104,10 @@ if (loadingIndicator) {
 let time = 0;
 InitMenuBg();
 
-
 function setupMenuBackground() {
   scene.fog = new THREE.FogExp2(
     MENU_THEME.scene.fogColor,
-    MENU_THEME.scene.fogDensity
+    MENU_THEME.scene.fogDensity,
   );
 
   if (globalState.skybox && scene) {
@@ -161,7 +159,6 @@ initApp();
 window.addEventListener("lobbyCreated", (e) => {
   UndoMenuBg();
 
-  
   if (globalState.board && globalState.scene) {
     globalState.scene.remove(globalState.board);
     globalState.board = null;
@@ -176,16 +173,43 @@ window.addEventListener("lobbyCreated", (e) => {
   globalState.loadedMeshes = loadedMeshes;
 
   const detail = e?.detail || {};
-  const themeFromSettings = detail.settings?.theme;
-  if (themeFromSettings && COLOR_SCHEME[themeFromSettings]) {
-    globalState.activeTheme = COLOR_SCHEME[themeFromSettings];
-  }
+  const themeKey =
+    detail.settings?.theme && COLOR_SCHEME[detail.settings.theme]
+      ? detail.settings.theme
+      : "classic";
+  const baseTheme = COLOR_SCHEME[themeKey] || ACTIVE_THEME;
 
-  const selectedTheme = globalState.activeTheme || ACTIVE_THEME;
+  const parseHexColorToInt = (hex) => {
+    if (!hex) return null;
+    const s = String(hex).trim();
+    const withHash = s.startsWith("#") ? s : `#${s}`;
+    if (!/^#[0-9a-fA-F]{6}$/.test(withHash)) return null;
+    return parseInt(withHash.slice(1), 16);
+  };
+
+  const pieceColors = globalState.chess?.pieceColors || null;
+  const w = parseHexColorToInt(pieceColors?.white);
+  const b = parseHexColorToInt(pieceColors?.black);
+  const selectedTheme =
+    pieceColors && baseTheme?.pieces
+      ? {
+          ...baseTheme,
+          pieces: {
+            white: {
+              ...baseTheme.pieces.white,
+              color: w ?? baseTheme.pieces.white.color,
+            },
+            black: {
+              ...baseTheme.pieces.black,
+              color: b ?? baseTheme.pieces.black.color,
+            },
+          },
+        }
+      : baseTheme;
 
   scene.fog = new THREE.FogExp2(
     selectedTheme.scene.fogColor,
-    selectedTheme.scene.fogDensity
+    selectedTheme.scene.fogDensity,
   );
 
   if (globalState.skybox) {
@@ -252,38 +276,29 @@ window.addEventListener("lobbyCreated", (e) => {
     globalState.controls.enabled = true;
   }
 
+  const myColor = detail?.color || globalState.chess?.color;
+  if (myColor === "black") {
+    camera.position.set(
+      -camera.position.x,
+      camera.position.y,
+      -camera.position.z,
+    );
+    camera.lookAt(0, 0, 0);
+    if (globalState.controls) {
+      globalState.controls.target.set(0, 0, 0);
+      globalState.controls.update();
+    }
+  } else {
+    camera.lookAt(0, 0, 0);
+  }
+
   setupClickHandler(renderer, camera, globalState.board);
   import("./game/interaction.js").then((m) => {
     if (m.updateCheckHighlightsFromMain) m.updateCheckHighlightsFromMain();
   });
   initMiniBoardUI();
-
-  
-  const existingDebugBtn = document.querySelector(".debug-retry-btn");
-  if (!existingDebugBtn) {
-    const debugBtn = document.createElement("button");
-    debugBtn.className = "debug-retry-btn";
-    debugBtn.type = "button";
-    debugBtn.textContent = "GAME END";
-    debugBtn.addEventListener("click", () => {
-      const lobbyId = globalState.chess?.lobbyId;
-      const gameId = globalState.chess?.gameId;
-      const userId = globalState.chess?.userId;
-      if (lobbyId && gameId && userId) {
-        socket.emit("chess:endGame", { lobbyId, gameId, userId });
-      } else {
-        const mockGame = {
-          _id: gameId || "local-test",
-          status: "checkmate",
-          turn: "black",
-        };
-        showGameOverModal(mockGame);
-      }
-    });
-    document.body.appendChild(debugBtn);
-  }
+  initChessClockUI();
 });
-
 
 window.addEventListener("leaveGame", () => {
   if (opponentLeftCountdownId != null) {
@@ -300,6 +315,9 @@ window.addEventListener("leaveGame", () => {
   }
   globalState.board = null;
   globalState.chess = null;
+  globalState.lobbyUsers = null;
+  destroyMiniBoardUI();
+  destroyChessClockUI();
   for (const key of Object.keys(pieces)) {
     const p = pieces[key];
     if (p && p.mesh && p.mesh.parent) p.mesh.parent.remove(p.mesh);
@@ -331,7 +349,12 @@ window.addEventListener("leaveGame", () => {
 
 let opponentLeftCountdownId = null;
 socket.on("lobby:update", ({ lobbyId: updatedLobbyId, users }) => {
-  if (!globalState.chess || !updatedLobbyId || globalState.chess.lobbyId !== updatedLobbyId) return;
+  if (
+    !globalState.chess ||
+    !updatedLobbyId ||
+    globalState.chess.lobbyId !== updatedLobbyId
+  )
+    return;
   const list = users || [];
   if (list.length >= 2) return;
   if (document.querySelector(".game-over-overlay")) return;
@@ -342,13 +365,20 @@ socket.on("lobby:update", ({ lobbyId: updatedLobbyId, users }) => {
     count -= 1;
     if (count <= 0) {
       opponentLeftCountdownId = null;
-      socket.emit("lobby:leave", { lobbyId: updatedLobbyId, userId: globalState.chess.userId });
+      socket.emit("lobby:leave", {
+        lobbyId: updatedLobbyId,
+        userId: globalState.chess.userId,
+      });
       window.dispatchEvent(new CustomEvent("leaveGame"));
     } else {
       opponentLeftCountdownId = window.setTimeout(tick, 1000);
     }
   };
   opponentLeftCountdownId = window.setTimeout(tick, 1000);
+});
+
+window.addEventListener("gameEnded", () => {
+  time = 0;
 });
 
 let count = 0;
@@ -358,9 +388,9 @@ function animate() {
   if (currentLights) {
     animateLights(currentLights, time);
   }
-  
+
   const currentSkybox = globalState.skybox;
-  if(currentSkybox){
+  if (currentSkybox) {
     currentSkybox.rotation.z += 0.0005;
   }
   if (
@@ -373,7 +403,7 @@ function animate() {
     if (currentSkybox.material.uniforms.u_res) {
       currentSkybox.material.uniforms.u_res.value.set(
         window.innerWidth || 1,
-        window.innerHeight || 1
+        window.innerHeight || 1,
       );
     }
   }
@@ -381,6 +411,6 @@ function animate() {
   controls.update();
   renderer.render(scene, camera);
   composer.render();
-  if (globalState.chess) time += 0.008;
+  if (globalState.chess && globalState.chess.status === "active") time += 0.008;
 }
 animate();

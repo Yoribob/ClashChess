@@ -7,10 +7,18 @@ import { resetGameEndAlertForNewGame } from "../game/interaction.js";
 let chessHandlersRegistered = false;
 let chessSyncIntervalId = null;
 
+function parseHexColorToInt(hex) {
+  if (!hex) return null;
+  const s = String(hex).trim();
+  const withHash = s.startsWith("#") ? s : `#${s}`;
+  if (!/^#[0-9a-fA-F]{6}$/.test(withHash)) return null;
+  return parseInt(withHash.slice(1), 16);
+}
+
 export function registerChessSocketHandlers() {
   if (chessHandlersRegistered) return;
 
-  socket.on("chess:start", async ({ lobbyId, gameId, game, settings }) => {
+  socket.on("chess:start", async ({ lobbyId, gameId, game, settings, pieceColors, clock }) => {
     try {
       closeGameOverModal();
 
@@ -45,7 +53,27 @@ export function registerChessSocketHandlers() {
           ? settings.theme
           : "classic";
 
-      globalState.activeTheme = COLOR_SCHEME[themeKey];
+      const baseTheme = COLOR_SCHEME[themeKey];
+      let themed = baseTheme;
+      if (pieceColors && baseTheme && baseTheme.pieces) {
+        const w = parseHexColorToInt(pieceColors.white);
+        const b = parseHexColorToInt(pieceColors.black);
+        themed = {
+          ...baseTheme,
+          pieces: {
+            white: {
+              ...baseTheme.pieces.white,
+              color: w ?? baseTheme.pieces.white.color,
+            },
+            black: {
+              ...baseTheme.pieces.black,
+              color: b ?? baseTheme.pieces.black.color,
+            },
+          },
+        };
+      }
+
+      globalState.activeTheme = themed;
       globalState.currentPlayer = game.turn === "white" ? "w" : "b";
       globalState.chess = {
         lobbyId,
@@ -54,6 +82,8 @@ export function registerChessSocketHandlers() {
         userId: myId,
         status: game.status,
         mode: settings?.mode || "classic",
+        pieceColors: pieceColors || null,
+        clock: clock || null,
         enPassantTarget: game.enPassantTarget || null,
         castling: game.castling || null,
         board: game.board || {},
